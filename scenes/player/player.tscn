@@ -1,0 +1,65 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scenes/player/player.gd" id="1_player"]
+[ext_resource type="Resource" path="res://scripts/weapons/revolver.tres" id="2_revolver"]
+[ext_resource type="Resource" path="res://scripts/weapons/shotgun.tres" id="4_shotgun"]
+[ext_resource type="Script" path="res://scenes/player/player_camera_2d.gd" id="3_camera"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_stand"]
+size = Vector2(56, 170)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_crouch"]
+size = Vector2(56, 90)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ceiling"]
+size = Vector2(52, 162)
+
+[node name="Player" type="CharacterBody2D"]
+collision_layer = 2
+collision_mask = 1
+script = ExtResource("1_player")
+weapons = Array[Weapon]([ExtResource("2_revolver"), ExtResource("4_shotgun")])
+
+[node name="Visuals" type="Node2D" parent="."]
+
+[node name="Placeholder" type="ColorRect" parent="Visuals"]
+offset_left = -28.0
+offset_top = -170.0
+offset_right = 28.0
+color = Color(0.87, 0.76, 0.55, 1)
+
+[node name="Muzzle" type="Marker2D" parent="Visuals"]
+position = Vector2(44, -112)
+
+[node name="Flash" type="ColorRect" parent="Visuals/Muzzle"]
+visible = false
+offset_left = -6.0
+offset_top = -9.0
+offset_right = 34.0
+offset_bottom = 9.0
+color = Color(1, 0.94, 0.62, 1)
+
+[node name="StandShape" type="CollisionShape2D" parent="."]
+position = Vector2(0, -85)
+shape = SubResource("RectangleShape2D_stand")
+
+[node name="CrouchShape" type="CollisionShape2D" parent="."]
+position = Vector2(0, -45)
+shape = SubResource("RectangleShape2D_crouch")
+disabled = true
+
+[node name="CeilingCheck" type="ShapeCast2D" parent="."]
+position = Vector2(0, -87)
+shape = SubResource("RectangleShape2D_ceiling")
+target_position = Vector2(0, 0)
+collision_mask = 1
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(0, -110)
+ignore_rotation = false
+position_smoothing_enabled = true
+position_smoothing_speed = 10.0
+drag_vertical_enabled = true
+drag_top_margin = 0.2
+drag_bottom_margin = 0.2
+script = ExtResource("3_camera")

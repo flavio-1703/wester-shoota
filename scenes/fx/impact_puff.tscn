@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/fx/impact_puff.gd" id="1_puff"]
+
+[node name="ImpactPuff" type="Node2D"]
+script = ExtResource("1_puff")
+
+[node name="Placeholder" type="ColorRect" parent="."]
+offset_left = -12.0
+offset_top = -12.0
+offset_right = 12.0
+offset_bottom = 12.0
+color = Color(0.95, 0.88, 0.72, 0.85)

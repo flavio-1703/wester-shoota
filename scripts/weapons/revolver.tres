@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="Weapon" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/weapons/weapon.gd" id="1_weapon"]
+[ext_resource type="PackedScene" path="res://scenes/projectiles/bullet.tscn" id="2_bullet"]
+
+[resource]
+script = ExtResource("1_weapon")
+display_name = "Revolver"
+ui_color = Color(0.72, 0.75, 0.82, 1)
+projectile_scene = ExtResource("2_bullet")
+fire_interval = 0.18
+automatic = true
+pellets = 1
+spread_degrees = 0.0
+recoil_impulse = 350.0
+trauma = 0.35
+muzzle_flash_time = 0.05

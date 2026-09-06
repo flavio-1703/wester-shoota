@@ -1,0 +1,53 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scenes/enemies/gunslinger.gd" id="1_gunslinger"]
+[ext_resource type="PackedScene" path="res://scenes/projectiles/enemy_bullet.tscn" id="2_bullet"]
+[ext_resource type="PackedScene" path="res://scenes/fx/impact_puff.tscn" id="3_puff"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_gunslinger"]
+size = Vector2(56, 160)
+
+[node name="Gunslinger" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 1
+script = ExtResource("1_gunslinger")
+bullet_scene = ExtResource("2_bullet")
+death_puff_scene = ExtResource("3_puff")
+
+[node name="Visuals" type="Node2D" parent="."]
+
+[node name="Placeholder" type="ColorRect" parent="Visuals"]
+offset_left = -28.0
+offset_top = -160.0
+offset_right = 28.0
+color = Color(0.62, 0.28, 0.26, 1)
+
+[node name="Muzzle" type="Marker2D" parent="Visuals"]
+position = Vector2(44, -110)
+
+[node name="Flash" type="ColorRect" parent="Visuals/Muzzle"]
+visible = false
+offset_left = -6.0
+offset_top = -8.0
+offset_right = 30.0
+offset_bottom = 8.0
+color = Color(1, 0.85, 0.55, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -80)
+shape = SubResource("RectangleShape2D_gunslinger")
+
+[node name="WallCheck" type="RayCast2D" parent="."]
+position = Vector2(0, -80)
+target_position = Vector2(-48, 0)
+collision_mask = 1
+
+[node name="LedgeCheck" type="RayCast2D" parent="."]
+position = Vector2(-44, -12)
+target_position = Vector2(0, 40)
+collision_mask = 1
+
+[node name="SightRay" type="RayCast2D" parent="."]
+position = Vector2(0, -104)
+target_position = Vector2(-900, 0)
+collision_mask = 1

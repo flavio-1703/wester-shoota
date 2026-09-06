@@ -1,0 +1,23 @@
+# Godot 4 editor and export caches
+.godot/
+/android/
+
+# Exported builds
+/build/
+/export/
+*.exe
+*.pck
+*.zip
+
+# Export presets can contain signing credentials and machine-local paths
+export_presets.cfg
+
+# Mono/.NET, if C# is ever added
+.mono/
+data_*/
+mono_crash.*.json
+
+# OS cruft
+Thumbs.db
+desktop.ini
+.DS_Store

@@ -1,0 +1,152 @@
+[gd_scene format=3 uid="uid://dlj6c4i0qlyha"]
+
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="1_player"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/gunslinger.tscn" id="2_gunslinger"]
+
+[sub_resource type="RectangleShape2D" id="Rect_ground"]
+size = Vector2(3840, 120)
+
+[sub_resource type="RectangleShape2D" id="Rect_roof"]
+size = Vector2(400, 80)
+
+[sub_resource type="RectangleShape2D" id="Rect_ledge_wide"]
+size = Vector2(336, 48)
+
+[sub_resource type="RectangleShape2D" id="Rect_ledge_narrow"]
+size = Vector2(192, 48)
+
+[node name="TestLevel" type="Node2D" unique_id=1960079851]
+
+[node name="Background" type="ColorRect" parent="." unique_id=482901874]
+offset_left = -400.0
+offset_top = -400.0
+offset_right = 4240.0
+offset_bottom = 1480.0
+color = Color(0.16, 0.13, 0.18, 1)
+
+[node name="CameraBounds" type="ReferenceRect" parent="." unique_id=1655646401 groups=["camera_bounds"]]
+offset_left = -100.0
+offset_top = -300.0
+offset_right = 3940.0
+offset_bottom = 1180.0
+border_color = Color(1, 0.45, 0.2, 1)
+
+[node name="Ground" type="StaticBody2D" parent="." unique_id=722964783]
+position = Vector2(1920, 1080)
+
+[node name="Placeholder" type="ColorRect" parent="Ground" unique_id=1253013925]
+offset_left = -1920.0
+offset_top = -60.0
+offset_right = 1920.0
+offset_bottom = 60.0
+color = Color(0.36, 0.26, 0.2, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Ground" unique_id=975812509]
+shape = SubResource("Rect_ground")
+
+[node name="TunnelRoof" type="StaticBody2D" parent="." unique_id=594212571]
+position = Vector2(750, 870)
+
+[node name="Placeholder" type="ColorRect" parent="TunnelRoof" unique_id=1029194996]
+offset_left = -200.0
+offset_top = -40.0
+offset_right = 200.0
+offset_bottom = 40.0
+color = Color(0.3, 0.23, 0.19, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="TunnelRoof" unique_id=351096568]
+shape = SubResource("Rect_roof")
+
+[node name="LedgeLow" type="StaticBody2D" parent="." unique_id=2082737546]
+position = Vector2(900, 884)
+
+[node name="Placeholder" type="ColorRect" parent="LedgeLow" unique_id=277576246]
+offset_left = 98.0
+offset_top = -157.0
+offset_right = 434.0
+offset_bottom = -109.0
+color = Color(0.42, 0.31, 0.24, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LedgeLow" unique_id=863760133]
+position = Vector2(268, -133)
+shape = SubResource("Rect_ledge_wide")
+
+[node name="LedgeHigh" type="StaticBody2D" parent="." unique_id=10319865]
+position = Vector2(1560, 684)
+
+[node name="Placeholder" type="ColorRect" parent="LedgeHigh" unique_id=1125870711]
+offset_left = -96.0
+offset_top = -24.0
+offset_right = 96.0
+offset_bottom = 24.0
+color = Color(0.42, 0.31, 0.24, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LedgeHigh" unique_id=639314481]
+shape = SubResource("Rect_ledge_narrow")
+
+[node name="LedgeFar" type="StaticBody2D" parent="." unique_id=1547357390]
+position = Vector2(2580, 884)
+
+[node name="Placeholder" type="ColorRect" parent="LedgeFar" unique_id=1246274526]
+offset_left = -168.0
+offset_top = -24.0
+offset_right = 168.0
+offset_bottom = 24.0
+color = Color(0.42, 0.31, 0.24, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LedgeFar" unique_id=1915432438]
+shape = SubResource("Rect_ledge_wide")
+
+[node name="LedgeUp1" type="StaticBody2D" parent="." unique_id=538168531]
+position = Vector2(3050, 724)
+
+[node name="Placeholder" type="ColorRect" parent="LedgeUp1" unique_id=1008633373]
+offset_left = -96.0
+offset_top = -24.0
+offset_right = 96.0
+offset_bottom = 24.0
+color = Color(0.42, 0.31, 0.24, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LedgeUp1" unique_id=903097875]
+shape = SubResource("Rect_ledge_narrow")
+
+[node name="LedgeUp2" type="StaticBody2D" parent="." unique_id=1375544329]
+position = Vector2(3320, 544)
+
+[node name="Placeholder" type="ColorRect" parent="LedgeUp2" unique_id=40320048]
+offset_left = -96.0
+offset_top = -24.0
+offset_right = 96.0
+offset_bottom = 24.0
+color = Color(0.42, 0.31, 0.24, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LedgeUp2" unique_id=1860581958]
+shape = SubResource("Rect_ledge_narrow")
+
+[node name="Perch" type="StaticBody2D" parent="." unique_id=1734720237]
+position = Vector2(3600, 364)
+
+[node name="Placeholder" type="ColorRect" parent="Perch" unique_id=465678390]
+offset_left = -168.0
+offset_top = -24.0
+offset_right = 168.0
+offset_bottom = 24.0
+color = Color(0.45, 0.33, 0.26, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Perch" unique_id=831261315]
+shape = SubResource("Rect_ledge_wide")
+
+[node name="Player" parent="." unique_id=1433164598 instance=ExtResource("1_player")]
+position = Vector2(240, 1020)
+
+[node name="Gunslinger" parent="." unique_id=2033965727 instance=ExtResource("2_gunslinger")]
+position = Vector2(1500, 1020)
+
+[node name="Gunslinger2" parent="." unique_id=491460851 instance=ExtResource("2_gunslinger")]
+position = Vector2(2600, 860)
+
+[node name="Gunslinger3" parent="." unique_id=1689293861 instance=ExtResource("2_gunslinger")]
+position = Vector2(3400, 1020)
+
+[node name="Gunslinger4" parent="." unique_id=118689254 instance=ExtResource("2_gunslinger")]
+position = Vector2(3620, 340)

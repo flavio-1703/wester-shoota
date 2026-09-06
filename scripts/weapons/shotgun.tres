@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="Weapon" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/weapons/weapon.gd" id="1_weapon"]
+[ext_resource type="PackedScene" path="res://scenes/projectiles/pellet.tscn" id="2_pellet"]
+
+[resource]
+script = ExtResource("1_weapon")
+display_name = "Shotgun"
+ui_color = Color(0.78, 0.5, 0.28, 1)
+projectile_scene = ExtResource("2_pellet")
+fire_interval = 0.62
+automatic = false
+pellets = 6
+spread_degrees = 26.0
+recoil_impulse = 900.0
+trauma = 0.6
+muzzle_flash_time = 0.09

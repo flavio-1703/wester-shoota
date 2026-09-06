@@ -1,0 +1,25 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scenes/projectiles/bullet.gd" id="1_bullet"]
+[ext_resource type="PackedScene" path="res://scenes/fx/impact_puff.tscn" id="2_puff"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_pellet"]
+size = Vector2(20, 7)
+
+[node name="Pellet" type="Area2D"]
+collision_layer = 8
+collision_mask = 5
+script = ExtResource("1_bullet")
+speed = 1400.0
+lifetime = 0.35
+puff_scene = ExtResource("2_puff")
+
+[node name="Placeholder" type="ColorRect" parent="."]
+offset_left = -10.0
+offset_top = -3.5
+offset_right = 10.0
+offset_bottom = 3.5
+color = Color(1, 0.82, 0.45, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_pellet")
