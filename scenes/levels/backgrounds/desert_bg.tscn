@@ -1,0 +1,157 @@
+[gd_scene format=3]
+
+[ext_resource type="Texture2D" path="res://assets/backgrounds/generated/sky.png" id="1_sky"]
+[ext_resource type="Texture2D" path="res://assets/backgrounds/generated/clouds.png" id="2_clouds"]
+[ext_resource type="Texture2D" path="res://assets/backgrounds/generated/far_ridge.png" id="3_far_ridge"]
+[ext_resource type="Texture2D" path="res://assets/backgrounds/generated/mesas.png" id="4_mesas"]
+[ext_resource type="Texture2D" path="res://assets/backgrounds/generated/buttes.png" id="5_buttes"]
+[ext_resource type="Texture2D" path="res://assets/backgrounds/generated/near_rocks.png" id="6_near_rocks"]
+[ext_resource type="Texture2D" path="res://assets/backgrounds/generated/foreground.png" id="7_foreground"]
+
+; Parallax background. Instanced by a level; not owned by GameState, because
+; backgrounds differ per level the way CameraBounds does (the HUD and pause menu
+; are the same everywhere, so those are GameState's).
+;
+; The textures are GENERATED, not painted — `python tools/gen_background.py`
+; rebuilds all seven from the palette and composition of
+; assets/backgrounds/background_reference.png. Do not hand-edit them; edit the
+; generator. It is a screen-print/riso greybox standing in for real art, in the
+; same spirit as the level's placeholder boxes.
+;
+; KEEP THIS NODE AT position (0, 0). Parallax2D writes its own transform every
+; frame; a parent offset is added on top of it and shifts every layer.
+;
+; Sprites are `centered = false` and positioned at the layer's local top-left,
+; so their positions here are exactly the LAYERS table in gen_background.py.
+; The generator asserts its canvas sizes against that table and prints them on
+; every run — if what it prints stops matching this file, coverage is stale.
+;
+; ---------------------------------------------------------------- the widths
+;
+; A layer's local origin is drawn at world (1 - scroll_scale) * camera_top_left,
+; so a child at local x lands at screen x - scroll_scale * T.x. Covering the
+; whole camera travel therefore needs
+;
+;     width = V + scroll_scale * (B - V)
+;
+; V is the viewport width at the WIDEST supported aspect: stretch/aspect is
+; keep_height, so ultrawide reveals more world and V is 2560 at 21:9, not 1920.
+;
+; B is NOT just the CameraBounds width. Camera2D applies `offset` after its
+; limits, and player_camera_2d.gd puts up to lookahead_distance (260px) into
+; offset, so the view escapes CameraBounds by that much on each side:
+;
+;     B = CameraBounds.width + 2 * lookahead_distance
+;
+; In test_level that is 4040 + 520 = 4560, and the visible world rect really
+; does reach x -360 against a bounds edge of -100. Raise lookahead_distance and
+; every fixed-width layer below has to widen with it. No layer ever needs to be
+; wider than B — at scroll_scale 1 the formula collapses to it.
+;
+; Camera shake writes `offset` and `rotation` on top of the look-ahead, so it
+; escapes the limits too. It is NOT in the formula, deliberately: shake moves the
+; parallax layers and the viewport together, so only scroll_scale * shake shows
+; up as a differential, and deriving that by hand is more error-prone than
+; measuring it. The widths are the formula plus ~170px of slack, and
+;
+;     Godot_v4.7.2-stable_win64.exe --path . --script res://tools/check_bg_coverage.gd
+;
+; reports the remaining margin per layer with trauma pinned at maximum. Run it
+; after touching CameraBounds, lookahead_distance or max_offset.
+;
+; Sky, clouds, far ridge, mesas and foreground tile via repeat_size and opt out
+; of the width budget; their art is seamless by construction (periodic profiles,
+; and shapes drawn at -pitch/0/+pitch so nothing is clipped at the boundary).
+; Buttes and near rocks are fixed-width, so their width is a dependency of
+; CameraBounds — the same trade the kill plane makes with fall_death_margin.
+
+[node name="DesertBackground" type="Node2D"]
+
+; scroll_scale.x = 0 locks the sky to the screen horizontally, so it covers any
+; viewport width for free — and the sun, which is painted into this texture,
+; stays put rather than sliding as the player runs. A little vertical scroll
+; keeps it from feeling glued to the camera when the player climbs.
+
+[node name="Sky" type="Parallax2D" parent="."]
+z_index = -100
+scroll_scale = Vector2(0, 0.1)
+
+[node name="Art" type="Sprite2D" parent="Sky"]
+texture = ExtResource("1_sky")
+centered = false
+position = Vector2(-120, -200)
+
+; autoscroll is the whole drift effect: one property, no script.
+
+[node name="Clouds" type="Parallax2D" parent="."]
+z_index = -95
+scroll_scale = Vector2(0.05, 0.08)
+repeat_size = Vector2(1800, 0)
+repeat_times = 3
+autoscroll = Vector2(6, 0)
+
+[node name="Art" type="Sprite2D" parent="Clouds"]
+texture = ExtResource("2_clouds")
+centered = false
+position = Vector2(0, 300)
+
+[node name="FarRidge" type="Parallax2D" parent="."]
+z_index = -80
+scroll_scale = Vector2(0.15, 0.15)
+repeat_size = Vector2(2200, 0)
+repeat_times = 3
+
+[node name="Art" type="Sprite2D" parent="FarRidge"]
+texture = ExtResource("3_far_ridge")
+centered = false
+position = Vector2(0, 350)
+
+[node name="Mesas" type="Parallax2D" parent="."]
+z_index = -70
+scroll_scale = Vector2(0.3, 0.3)
+repeat_size = Vector2(2600, 0)
+repeat_times = 3
+
+[node name="Art" type="Sprite2D" parent="Mesas"]
+texture = ExtResource("4_mesas")
+centered = false
+position = Vector2(0, 500)
+
+; Fixed width. Needs 0.55 * -360 = -198 on the left and
+; 2560 + 0.55 * (4560 - 2560) = 3660 on the right; authored -380 .. 3700.
+
+[node name="Buttes" type="Parallax2D" parent="."]
+z_index = -60
+scroll_scale = Vector2(0.55, 0.55)
+
+[node name="Art" type="Sprite2D" parent="Buttes"]
+texture = ExtResource("5_buttes")
+centered = false
+position = Vector2(-380, 550)
+
+; Fixed width. Needs 0.8 * -360 = -288 and
+; 2560 + 0.8 * (4560 - 2560) = 4160; authored -480 .. 4200.
+
+[node name="NearRocks" type="Parallax2D" parent="."]
+z_index = -50
+scroll_scale = Vector2(0.8, 0.8)
+
+[node name="Art" type="Sprite2D" parent="NearRocks"]
+texture = ExtResource("6_near_rocks")
+centered = false
+position = Vector2(-480, 500)
+
+; scroll_scale > 1 puts it in front of the play plane, so z_index is positive:
+; this is the only layer that draws over the player.
+
+[node name="ForegroundDust" type="Parallax2D" parent="."]
+z_index = 40
+scroll_scale = Vector2(1.2, 1.2)
+repeat_size = Vector2(1400, 0)
+repeat_times = 3
+autoscroll = Vector2(-14, 0)
+
+[node name="Art" type="Sprite2D" parent="ForegroundDust"]
+texture = ExtResource("7_foreground")
+centered = false
+position = Vector2(0, 1060)

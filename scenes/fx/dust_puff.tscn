@@ -1,0 +1,8 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/fx/dust_puff.gd" id="1_dust"]
+[ext_resource type="Texture2D" path="res://assets/fx/generated/puff.png" id="2_puff"]
+
+[node name="DustPuff" type="Sprite2D"]
+texture = ExtResource("2_puff")
+script = ExtResource("1_dust")

@@ -4,8 +4,14 @@ A western run-and-gun sidescroller. Godot 4.7 (Standard / GDScript), targeting a
 desktop executable.
 
 **Art direction:** hand-painted / illustrated HD 2D (Ori, Hollow Knight lineage) —
-**not** pixel art. Authored at 1920×1080. Prototyping with placeholder rectangles
-now; real art to be commissioned once the game proves out.
+**not** pixel art. Authored at 1920×1080.
+
+The **player is animated** from `assets/characters/player_spritesheet_2.png` —
+nine clips covering run, jump, fall, land, slide, shoot and crouch. See
+[`assets/characters/ANIMATION.md`](assets/characters/ANIMATION.md) for the
+slicing pipeline, the clip table and the gaps (no run-shoot, no crouch-walk, no
+hit or death pose). Everything else — level geometry, enemies, projectiles — is
+still placeholder rectangles.
 
 ## Getting it running
 
@@ -127,6 +133,109 @@ one-shot kill — and past 490px nothing arrives at all, because that's where th
 pellets expire. **How much of the fan connects in between is unmeasured**; it
 needs F5, along with everything else about the feel.
 
+## Character effects
+
+Squash, stretch, a recoil lean and dust — all code, no new art. Tunable in the
+inspector under **Juice** on the Player, alongside everything else about the feel.
+
+### The run was skating, and that was most of what looked wrong
+
+The `run` clip is a full cycle of two steps. Authored at a flat 0.60s it covered
+**360px of world travel per cycle** while the drawn step is only about **142px**
+on screen — so the character slid roughly **27%** of the way, feet scrubbing the
+ground. That reads as badly as it sounds and no amount of effects hides it.
+
+`run_stride` (under **Run**) is now the distance one drawn step actually carries
+the body, and the clip is time-scaled to fit: at speed `v` the cycle is made to
+last `2 * run_stride / v`. It is driven off the **live velocity**, not off
+`run_speed`, so it also covers the accel and decel ramps — where a fixed rate has
+the legs turning over at full sprint cadence while the body is barely moving.
+
+`run_stride` is measured off the sheet by hand, so **re-measure it if the run art
+changes.** `tools/check_player_fx.gd` asserts the ratio and fails below 0.88 or
+above 1.12.
+
+### The run bob is code because the art has none
+
+Every run frame was drawn with its feet on the same line — `feet_y` is identical
+across all nine — so the body never rises and the cycle reads as a paper doll
+being slid along. `run_bob` supplies it.
+
+It only ever **lifts, never sinks**: the offset runs from 0 at the contact frames
+to `-run_bob` at the passing frames. Pushing down from a drawn baseline would
+drive the planted boot through the floor, whereas lifting during the passing
+phase is right precisely because that's when the feet are off the ground in a
+real stride.
+
+Unlike squash and stretch it's written to **Visuals**, not the sprite: the gun is
+in the character's hand, so the muzzle should rise and fall with the body. Moving
+the whole node leaves `_muzzle.position` at `MUZZLE_STAND` and keeps the
+code-drawn flash attached to the hand.
+
+**What is still wrong is the art, not the timing.** The upper body barely moves
+across the nine frames — align the frames and the head/hat differ by 3–10 while
+the legs differ by 9–20. The arms don't swing and the shoulders don't rotate.
+Nothing in code fixes that; it needs a redrawn cycle.
+
+- **Squash and stretch.** The sprite stretches with vertical speed while airborne
+  and compresses on landing *in proportion to the impact*, so a hop off a ledge
+  barely registers and a long drop really lands. The impact speed is sampled
+  before `move_and_slide()`, which zeroes it against the floor on the very frame
+  the landing happens.
+- **Dust** on takeoff, landing, running, sliding and skidding, plus smoke off the
+  muzzle. One `dust_puff.tscn` for all of it — the spawner varies velocity, size,
+  lifetime and opacity rather than there being a scene per effect. Dust is
+  spawned into the **level**, not onto the player, so it stays where it was
+  kicked up instead of travelling along at `run_speed`.
+- **A recoil lean** on firing, and a **muzzle flash** — see below.
+
+### The muzzle flash fills a gap in the sheet
+
+`ANIMATION.md` records that the sheet has no firing pose for a moving or airborne
+character: the shot fires, but nothing is acted out and **nothing flashes**. The
+flash half of that is now filled in code.
+
+The gate is load-bearing and it cuts both ways. `shoot` and `crouch_shoot` have a
+flash **painted into the art**, so drawing another over them would flash every
+shot twice. `run`, `jump` and `fall` have none, so they get a code-drawn one.
+Those two lists are `PAINTED_FLASH_CLIPS` and `UNPAINTED_FLASH_CLIPS` in
+`player.gd`, and they are a hand-maintained mirror of what the artist has drawn.
+**If `run_shoot` art ever lands, move those clips between the lists.**
+
+`slide` is deliberately in neither: you can fire mid-slide, but the slide poses
+have no gun drawn at all, so a flash from a visibly empty hand reads worse than
+no flash. That one stays a job for the art.
+
+`_update_animation()` returns the clip it picked and the flash is gated on that
+return value, rather than working the state out a second time — two copies of
+that decision would drift the first time someone reordered a branch.
+
+### Everything visual goes on the Sprite, not on Visuals
+
+`Visuals/Muzzle` is a **sibling** of `Visuals/Sprite`, and bullets spawn at its
+global position. Squash, stretch and the recoil lean are therefore written to the
+sprite alone: scaling or rotating `Visuals` would drag the muzzle with it and
+quietly move the spawn point off `MUZZLE_STAND` / `MUZZLE_CROUCH`, the constants
+measured off the painted flashes. The sprite's origin sits at the player's feet,
+which is the pivot squash wants anyway — the boots stay planted.
+
+`_update_sprite_transform()` is the single writer of the sprite's scale and
+rotation, the same contract `_update_damage_feedback()` holds for `modulate` and
+the camera holds for `offset`. It writes an **absolute** scale off the
+`SPRITE_SCALE` constant rather than multiplying what's already there, which would
+compound the squash every frame.
+
+### Checking it
+
+```
+Godot_v4.7.2-stable_win64.exe --path . --script res://tools/check_player_fx.gd
+```
+
+Drives the real player through standing, running, airborne and sliding fire and
+asserts the flash appears in exactly two of them; then jumps and asserts the
+sprite stretched, squashed on landing, and that **the muzzle did not move**.
+Non-zero exit on failure. Run it after touching the clip lists or the sheet.
+
 ## Crouch and slide
 
 Crouching swaps to a 90px collision shape instead of the 170px standing one,
@@ -146,12 +255,21 @@ this on.
 
 ```
 assets/            art + audio, plus CREDITS.md (fill it in per source)
+assets/backgrounds/  background_reference.png + generated/ (built, not hand-edited)
+assets/fx/         generated/ — dust puff + muzzle flash (built, not hand-edited)
+assets/characters/ player sheet + the sliced grid; ANIMATION.md documents both
+tools/             sheet slicer + SpriteFrames generator (Python, run by hand)
+                   check_bg_coverage.gd — parallax coverage guard (Godot, headed)
+                   gen_background.py — builds the parallax layer PNGs
+                   gen_fx.py — builds the dust/muzzle-flash sprites
+                   check_player_fx.gd — muzzle-flash gate + squash guard
 scenes/player/     player.tscn, player_camera_2d.gd
 scenes/enemies/    gunslinger.tscn
 scenes/projectiles/  bullet.gd is shared — bullet.tscn, pellet.tscn and
                      enemy_bullet.tscn differ only in numbers, colour and layers
-scenes/fx/         impact_puff.tscn
+scenes/fx/         impact_puff.tscn, dust_puff.tscn, muzzle_flash.tscn
 scenes/levels/     test_level.tscn
+scenes/levels/backgrounds/  desert_bg.tscn — parallax layers, instanced per level
 scenes/ui/         main_menu.tscn, pause_menu.tscn, game_over_menu.tscn
                    hud.tscn — health readout, owned by GameState
                    debug_overlay.tscn — autoloaded as DebugOverlay
@@ -317,6 +435,196 @@ Group membership is declared in the `.tscn` rather than added in `_ready()`,
 which means it exists at instantiation and doesn't depend on node ready order.
 A level with no `CameraBounds` just keeps whatever limits the camera already has.
 
+## Backgrounds
+
+Seven `Parallax2D` layers in `scenes/levels/backgrounds/desert_bg.tscn`, each a
+`Sprite2D` on a generated texture (see [below](#the-layer-art-is-generated-not-painted)
+— a comic-book greybox, not final art, in the same spirit as the level's
+placeholder boxes). It's instanced
+by the level, **not owned by `GameState`** — that's the same line the rest of the
+project draws: `GameState` owns what every level needs identically (HUD, pause
+menu), the level owns what differs (`CameraBounds`, and now the background).
+
+`Parallax2D` rather than the older `ParallaxBackground`, because
+`ParallaxBackground` is a `CanvasLayer` and the player camera runs with
+`ignore_rotation = false` — under shake roll the world would tilt and the sky
+would sit still. `Parallax2D` is a `Node2D`, so it rolls with everything else,
+and it brings `scroll_scale`, `repeat_size` and `autoscroll` as properties rather
+than as script.
+
+Layers are ordered by explicit `z_index` (sky −100 up to the play plane at 0,
+with the dust overlay at +40 — the one layer that draws over the player), and
+`scroll_scale` runs 0 → 1.2. Anything above 1.0 reads as foreground.
+
+### How wide a layer has to be
+
+A layer's local origin is drawn at world `(1 − scroll_scale) × camera_top_left`,
+so a child at local `x` lands at screen `x − scroll_scale × T.x`. Covering the
+camera's whole travel therefore needs
+
+```
+width = V + scroll_scale × (B − V)
+```
+
+Two things about those terms are easy to get wrong, and both were measured rather
+than assumed:
+
+- **`V` is the viewport width at your widest aspect, not 1920.**
+  `stretch/aspect` is `keep_height`, so an ultrawide monitor genuinely reveals
+  more world — 2560 at 21:9. Budget against that.
+- **`B` is not the `CameraBounds` width.** `Camera2D` applies `offset` *after* its
+  limits, and the camera puts up to `lookahead_distance` (260px) into `offset`, so
+  the view escapes the bounds by that much on each side. `B = CameraBounds.width
+  + 2 × lookahead_distance` — 4560 in `test_level`, not 4040. The visible world
+  rect really does reach x −360 against a bounds edge of −100. **Raise
+  `lookahead_distance` and every fixed-width layer has to widen with it.**
+
+The useful ceiling: no layer ever needs to be wider than `B`, since at
+`scroll_scale = 1` the formula collapses to it.
+
+### The layer art is generated, not painted
+
+```
+python tools/gen_background.py
+```
+
+Rebuilds all seven PNGs into `assets/backgrounds/generated/`. **Don't hand-edit
+them — edit the generator.** The look and the entire palette come from
+`assets/backgrounds/background_reference.png`: a western comic panel of flat
+fills, heavy black ink outlines, hard-edged lit facets, print halftone and paper
+grain. That style is reproducible procedurally in a way a painted background is
+not, which is the only reason this exists. It is a good greybox standing in for
+real art, in the same spirit as the level's placeholder boxes — **not** the
+hand-painted direction at the top of this file.
+
+### Three shape rules, and why
+
+The first version of this generator built its terrain from a height field of
+integer-frequency sines. It tiled perfectly and it looked like nothing on earth:
+rolling lumps at every scale, an "uneven" horizon, and column-derived highlights
+that came out as vertical stripes. What replaced it:
+
+- **The desert floor is flat.** Horizons are level to within a few pixels. A
+  visibly undulating ground line is the loudest possible tell that terrain was
+  generated rather than drawn, and the reference has none.
+- **Relief is explicit faceted forms, not a height field** — `cone_points` and
+  `butte_points` return polygons with a named peak, so the lit face and the
+  erosion strokes can be drawn *from* that peak. A height field has no peak to
+  draw from. Two numbers decide whether a cone reads as a mountain or as a
+  circus tent: a base:height ratio near **4:1**, and `flare` near **1.5** (past
+  ~1.7 the summit flattens into a dome, at 1.0 it's a road sign). The sub-peak
+  `cone_points` inserts on one flank is doing more work than either.
+- **Depth is value, not detail.** Each layer blends its fills toward paper by a
+  fixed `haze` fraction, so the range steps pale-far to saturated-near. Layers
+  sitting at the same lightness cannot be separated by adding linework; that
+  just adds noise.
+
+Three things in it are load-bearing:
+
+- **Tiling is no longer free.** The old sine profiles closed on themselves by
+  construction; discrete faceted shapes do not. Every shape on a tiling layer
+  must be drawn through `wrap_x(pitch)` at `-pitch`, `0` and `+pitch`, and no
+  shape may be wider than the pitch — PIL clips at the canvas edge, so a cloud
+  straddling the boundary is otherwise cut in half with the neighbouring copy
+  starting fresh.
+- **Facets and linework are clipped to the shape they belong to**, by building
+  each landform as its own tile (`relief`) or local stamp (`boulder`) and
+  masking with `clip_to`. Deriving a lit face from the *finished layer's* alpha
+  instead — which the old `lit_faces` did, via `argmax` down each column —
+  reads row 0 for every transparent column, so each silhouette edge became a
+  phantom slope with a wedge hanging off it.
+- **The generator asserts its canvas sizes against its own `LAYERS` table and
+  prints them on every run**, including each layer's bottom edge. That table is
+  the same geometry as `desert_bg.tscn`, kept in sync by hand — if what it
+  prints stops matching the scene, a layer has been resized and the coverage
+  budget is stale. Note the assert can only catch the *generator* drifting;
+  editing `LAYERS` without editing the matching `Sprite2D` position in the
+  `.tscn` passes it and silently misplaces the layer.
+
+### Layer heights grow upward
+
+Saguaros and buttes stand up from their ground line, so each canvas needs
+headroom above it. **No layer's `local y + h` may move** — it is 1600 for the
+four terrain layers, 800 for the clouds, 1400 for the sky and 1420 for the
+foreground — and heights were grown by moving the origin up. That invariant
+is what makes the headroom free: `check_bg_coverage.gd` measures the *bottom*
+edge, so growing a layer upward cannot invalidate the width budget, and widths
+were not touched at all.
+
+`HORIZON` in the generator holds each layer's ground line in world y. Those
+values are tuned against each other rather than derived: the layers scroll
+vertically at different rates, so what stacks on screen is a product of those
+rates. The gap between `buttes` (820) and `near_rocks` (956) is the one to
+watch — they carry the two inked horizons the player actually sees, and closer
+together they land ~30px apart on screen and read as railway track.
+
+**After regenerating, re-import before checking coverage:**
+
+```
+Godot_v4.7.2-stable_win64.exe --headless --path . --import
+```
+
+`--script` does not reimport changed textures. Skip it after a size change and
+the check measures the *old* texture — which shows up as a bottom-margin
+shortfall exactly equal to how far the origin moved.
+
+The sun is painted into the sky layer, which has `scroll_scale.x = 0`. That's
+deliberate: a sun at infinity shouldn't slide as the player runs, and the
+screen-lock also means the sky covers any viewport width for free.
+
+Camera **shake** escapes the limits the same way — it writes `offset` and
+`rotation` on top of the look-ahead — but it is deliberately *not* in the
+formula. Shake moves the parallax layers and the viewport together, so only
+`scroll_scale × shake` shows up as a differential, and that's easier to measure
+than to derive. The authored widths are the formula plus ~170px of slack.
+
+### Checking it
+
+```
+Godot_v4.7.2-stable_win64.exe --path . --script res://tools/check_bg_coverage.gd
+Godot_v4.7.2-stable_win64.exe --path . --script res://tools/check_bg_coverage.gd --resolution 2560x1080
+```
+
+Parks the camera at both ends of the level and at the top of the climb, extends
+look-ahead fully, pins trauma at maximum for 40 frames, and prints **how many
+pixels of margin each layer has left** at its worst — plus a PNG per position so
+the composition can be looked at. Non-zero exit if anything has run out.
+
+**Re-run it after moving a `CameraBounds` rect or retuning the camera.** The
+per-layer widths in `desert_bg.tscn` are hand-copied numbers derived from
+`CameraBounds`, `lookahead_distance` and `max_offset`, and nothing else catches
+them going stale — the same reason `slice_player_sheet.py` prints the muzzle
+constants on every run.
+
+This is not a formality. The `Camera2D.offset`-escapes-the-limits overrun above
+was found by this check and not by the screenshots: the layers were short by
+98–188px on one side and it wasn't visible in a rendered frame, because nearer
+geometry happened to cover the gap at the camera positions that were looked at.
+
+### Tiling vs. fixed width is an art-brief decision
+
+Sky, clouds, ridge, mesas and dust set `repeat_size` and opt out of the width
+budget entirely; buttes and near rocks are fixed-width. That's the fork, and it
+lands in the commission spec rather than in code:
+
+- **Fixed width** is cheaper to paint, but the layer's width becomes a dependency
+  of `CameraBounds`. Drag that rect wider in the 2D editor and the layer's edge
+  slides into frame — the same trade the kill plane makes with
+  `fall_death_margin`.
+- **`repeat_size`** makes width stop mattering, at the cost of art that must tile
+  seamlessly on x.
+
+"≥3700px wide" and "seamlessly tileable horizontally" are different deliverables
+and, per `CREDITS.md`, expensive to retrofit after delivery. Decide per layer
+before commissioning.
+
+The sky is a `GradientTexture2D`, not a painted texture. Two flat rects put a hard
+line across the frame with no silhouette to hide the seam, and a sky is the case a
+texture handles worst — VRAM compression bands smooth gradients badly. The real
+art may well keep the gradient and only paint the clouds.
+
+Drift on the clouds and the dust is `autoscroll`: one property, no code.
+
 ## Where things stand
 
 Verified by a headless import + instantiation pass: the project imports with no
@@ -328,7 +636,10 @@ semi-automatic while the revolver auto-fires on schedule, and a revolver bullet'
 travel vector is numerically unchanged by the angle support added for spread. The
 HUD weapon row was checked against a **rendered frame**, not just the node tree:
 the slots sit clear of the health pips, the lit slot follows the switch, and
-appending to `weapons` at runtime grows the row on the next frame. The pause lifecycle is covered by a
+appending to `weapons` at runtime grows the row on the next frame. Every parallax
+layer covers the frame with at least 170px to spare at both ends of the level and
+up on the Perch, at 16:9 and 21:9, with look-ahead extended and shake at peak —
+re-checkable with `tools/check_bg_coverage.gd`. The pause lifecycle is covered by a
 headless run too — pause freezes the player but not the menu, resume restores,
 and "Main Menu" from the pause screen leaves the tree unpaused. **Gameplay feel
 is still unplayed** — that needs a human on F5.
@@ -352,9 +663,19 @@ Godot_v4.7.2-stable_win64.exe --headless --path . res://scenes/levels/test_level
 - [x] Game over — death by damage or by falling out of the level, retry / main menu / quit
 - [x] Health HUD — pip row top-left, survives scene swaps; values still unbalanced
 - [x] Debug overlay — F3, frame timings + 1% low, render/memory/physics counters
+- [x] Player animation — sheet sliced to a 9-clip SpriteFrames, driven off the existing movement states
+- [x] Character effects — squash/stretch, recoil lean, dust on takeoff/land/run/
+      slide/skid, muzzle smoke, and a code-drawn flash for the poses the sheet
+      doesn't paint one for; guarded by `tools/check_player_fx.gd`
+- [ ] Player firing *poses* for run / jump / crouch-walk — the sheet has none, so
+      shooting on the move still isn't acted out (the flash is now drawn, the
+      pose isn't)
+- [x] Parallax background — 7 `Parallax2D` layers, per-level scene, coverage
+      guarded by `tools/check_bg_coverage.gd`; layer art generated by
+      `tools/gen_background.py` from the reference (greybox, not final art)
 - [ ] Level built from real geometry rather than placeholder boxes
-- [ ] Commissioned art
-- [ ] Lighting / parallax / particles polish pass
+- [ ] Enemy and projectile art
+- [ ] Lighting / particles polish pass
 - [ ] Windows export
 
 ## Tuning the movement

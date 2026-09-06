@@ -1,0 +1,16 @@
+{
+  "sheet": "player_frames.png",
+  "cell_w": 288,
+  "cell_h": 240,
+  "baseline": 208,
+  "stand_h": 190,
+  "rows": {
+    "run": 9,
+    "jump": 4,
+    "fall": 2,
+    "land": 2,
+    "slide": 5,
+    "shoot": 7,
+    "crouch": 8
+  }
+}

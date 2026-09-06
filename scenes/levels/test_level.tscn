@@ -2,6 +2,7 @@
 
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/enemies/gunslinger.tscn" id="2_gunslinger"]
+[ext_resource type="PackedScene" path="res://scenes/levels/backgrounds/desert_bg.tscn" id="3_desert_bg"]
 
 [sub_resource type="RectangleShape2D" id="Rect_ground"]
 size = Vector2(3840, 120)
@@ -17,12 +18,9 @@ size = Vector2(192, 48)
 
 [node name="TestLevel" type="Node2D" unique_id=1960079851]
 
-[node name="Background" type="ColorRect" parent="." unique_id=482901874]
-offset_left = -400.0
-offset_top = -400.0
-offset_right = 4240.0
-offset_bottom = 1480.0
-color = Color(0.16, 0.13, 0.18, 1)
+; Must stay at (0, 0) — the Parallax2D layers inside write their own transforms
+; and a parent offset is added on top of them.
+[node name="Background" parent="." instance=ExtResource("3_desert_bg")]
 
 [node name="CameraBounds" type="ReferenceRect" parent="." unique_id=1655646401 groups=["camera_bounds"]]
 offset_left = -100.0
@@ -39,7 +37,7 @@ offset_left = -1920.0
 offset_top = -60.0
 offset_right = 1920.0
 offset_bottom = 60.0
-color = Color(0.36, 0.26, 0.2, 1)
+color = Color(0.62, 0.447, 0.278, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Ground" unique_id=975812509]
 shape = SubResource("Rect_ground")
@@ -52,7 +50,7 @@ offset_left = -200.0
 offset_top = -40.0
 offset_right = 200.0
 offset_bottom = 40.0
-color = Color(0.3, 0.23, 0.19, 1)
+color = Color(0.55, 0.39, 0.24, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="TunnelRoof" unique_id=351096568]
 shape = SubResource("Rect_roof")
@@ -65,7 +63,7 @@ offset_left = 98.0
 offset_top = -157.0
 offset_right = 434.0
 offset_bottom = -109.0
-color = Color(0.42, 0.31, 0.24, 1)
+color = Color(0.69, 0.51, 0.32, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LedgeLow" unique_id=863760133]
 position = Vector2(268, -133)
@@ -79,7 +77,7 @@ offset_left = -96.0
 offset_top = -24.0
 offset_right = 96.0
 offset_bottom = 24.0
-color = Color(0.42, 0.31, 0.24, 1)
+color = Color(0.69, 0.51, 0.32, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LedgeHigh" unique_id=639314481]
 shape = SubResource("Rect_ledge_narrow")
@@ -92,7 +90,7 @@ offset_left = -168.0
 offset_top = -24.0
 offset_right = 168.0
 offset_bottom = 24.0
-color = Color(0.42, 0.31, 0.24, 1)
+color = Color(0.69, 0.51, 0.32, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LedgeFar" unique_id=1915432438]
 shape = SubResource("Rect_ledge_wide")
@@ -105,7 +103,7 @@ offset_left = -96.0
 offset_top = -24.0
 offset_right = 96.0
 offset_bottom = 24.0
-color = Color(0.42, 0.31, 0.24, 1)
+color = Color(0.69, 0.51, 0.32, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LedgeUp1" unique_id=903097875]
 shape = SubResource("Rect_ledge_narrow")
@@ -118,7 +116,7 @@ offset_left = -96.0
 offset_top = -24.0
 offset_right = 96.0
 offset_bottom = 24.0
-color = Color(0.42, 0.31, 0.24, 1)
+color = Color(0.69, 0.51, 0.32, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LedgeUp2" unique_id=1860581958]
 shape = SubResource("Rect_ledge_narrow")
@@ -131,7 +129,7 @@ offset_left = -168.0
 offset_top = -24.0
 offset_right = 168.0
 offset_bottom = 24.0
-color = Color(0.45, 0.33, 0.26, 1)
+color = Color(0.72, 0.54, 0.34, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Perch" unique_id=831261315]
 shape = SubResource("Rect_ledge_wide")
