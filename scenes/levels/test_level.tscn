@@ -2,7 +2,9 @@
 
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/enemies/gunslinger.tscn" id="2_gunslinger"]
-[ext_resource type="PackedScene" path="res://scenes/levels/backgrounds/desert_bg.tscn" id="3_desert_bg"]
+[ext_resource type="PackedScene" uid="uid://myvv3iispsx0" path="res://scenes/levels/backgrounds/desert_bg.tscn" id="3_desert_bg"]
+[ext_resource type="PackedScene" path="res://scenes/checkpoints/saloon_checkpoint.tscn" id="4_saloon"]
+[ext_resource type="PackedScene" path="res://scenes/pickups/tequila_stash.tscn" id="5_stash"]
 
 [sub_resource type="RectangleShape2D" id="Rect_ground"]
 size = Vector2(3840, 120)
@@ -18,28 +20,27 @@ size = Vector2(192, 48)
 
 [node name="TestLevel" type="Node2D" unique_id=1960079851]
 
-; Must stay at (0, 0) — the Parallax2D layers inside write their own transforms
-; and a parent offset is added on top of them.
-[node name="Background" parent="." instance=ExtResource("3_desert_bg")]
+[node name="Background" parent="." unique_id=750020606 instance=ExtResource("3_desert_bg")]
 
 [node name="CameraBounds" type="ReferenceRect" parent="." unique_id=1655646401 groups=["camera_bounds"]]
-offset_left = -100.0
-offset_top = -300.0
-offset_right = 3940.0
-offset_bottom = 1180.0
+offset_left = -267.0
+offset_top = -301.0
+offset_right = 3773.0
+offset_bottom = 1179.0
 border_color = Color(1, 0.45, 0.2, 1)
 
 [node name="Ground" type="StaticBody2D" parent="." unique_id=722964783]
 position = Vector2(1920, 1080)
 
 [node name="Placeholder" type="ColorRect" parent="Ground" unique_id=1253013925]
-offset_left = -1920.0
-offset_top = -60.0
-offset_right = 1920.0
-offset_bottom = 60.0
+offset_left = -2187.0
+offset_top = -25.0
+offset_right = 1653.0
+offset_bottom = 95.0
 color = Color(0.62, 0.447, 0.278, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Ground" unique_id=975812509]
+position = Vector2(-264, 37)
 shape = SubResource("Rect_ground")
 
 [node name="TunnelRoof" type="StaticBody2D" parent="." unique_id=594212571]
@@ -50,7 +51,6 @@ offset_left = -200.0
 offset_top = -40.0
 offset_right = 200.0
 offset_bottom = 40.0
-color = Color(0.55, 0.39, 0.24, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="TunnelRoof" unique_id=351096568]
 shape = SubResource("Rect_roof")
@@ -86,13 +86,14 @@ shape = SubResource("Rect_ledge_narrow")
 position = Vector2(2580, 884)
 
 [node name="Placeholder" type="ColorRect" parent="LedgeFar" unique_id=1246274526]
-offset_left = -168.0
-offset_top = -24.0
-offset_right = 168.0
-offset_bottom = 24.0
+offset_left = 33.0
+offset_top = -27.0
+offset_right = 369.0
+offset_bottom = 21.0
 color = Color(0.69, 0.51, 0.32, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LedgeFar" unique_id=1915432438]
+position = Vector2(203, -4)
 shape = SubResource("Rect_ledge_wide")
 
 [node name="LedgeUp1" type="StaticBody2D" parent="." unique_id=538168531]
@@ -135,16 +136,23 @@ color = Color(0.72, 0.54, 0.34, 1)
 shape = SubResource("Rect_ledge_wide")
 
 [node name="Player" parent="." unique_id=1433164598 instance=ExtResource("1_player")]
-position = Vector2(240, 1020)
+position = Vector2(186, 933)
 
 [node name="Gunslinger" parent="." unique_id=2033965727 instance=ExtResource("2_gunslinger")]
-position = Vector2(1500, 1020)
+position = Vector2(1600, 925)
 
 [node name="Gunslinger2" parent="." unique_id=491460851 instance=ExtResource("2_gunslinger")]
-position = Vector2(2600, 860)
+position = Vector2(2702, 855)
 
 [node name="Gunslinger3" parent="." unique_id=1689293861 instance=ExtResource("2_gunslinger")]
-position = Vector2(3400, 1020)
+position = Vector2(3538, 953)
 
 [node name="Gunslinger4" parent="." unique_id=118689254 instance=ExtResource("2_gunslinger")]
 position = Vector2(3620, 340)
+
+[node name="Saloon" parent="." unique_id=1090553301 instance=ExtResource("4_saloon")]
+position = Vector2(2202, 1011)
+checkpoint_id = &"test_level_saloon"
+
+[node name="TequilaStash" parent="." unique_id=1090553302 instance=ExtResource("5_stash")]
+position = Vector2(3050, 700)

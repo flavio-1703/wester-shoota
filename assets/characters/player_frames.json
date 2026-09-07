@@ -3,14 +3,18 @@
   "cell_w": 288,
   "cell_h": 240,
   "baseline": 208,
-  "stand_h": 190,
+  "stand_h": 168,
   "rows": {
-    "run": 9,
-    "jump": 4,
+    "idle": 7,
+    "run": 8,
+    "jump": 5,
     "fall": 2,
     "land": 2,
     "slide": 5,
-    "shoot": 7,
-    "crouch": 8
+    "shoot": 6,
+    "crouch": 2,
+    "crouch_walk": 9,
+    "run_shoot": 8,
+    "jump_shoot": 5
   }
 }

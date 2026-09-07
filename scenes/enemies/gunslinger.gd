@@ -44,12 +44,14 @@ var _saw_player: bool = false
 @onready var _wall_check: RayCast2D = $WallCheck
 @onready var _ledge_check: RayCast2D = $LedgeCheck
 @onready var _sight_ray: RayCast2D = $SightRay
+@onready var _health_bar_fill: ColorRect = $HealthBar/Fill
 
 
 func _ready() -> void:
 	health = max_health
 	add_to_group("enemies")
 	_apply_facing()
+	_update_health_bar()
 
 
 func _physics_process(delta: float) -> void:
@@ -161,10 +163,17 @@ func take_damage(amount: int, from_direction: int = 0) -> void:
 	if health <= 0:
 		return
 	health -= amount
+	_update_health_bar()
 	_hit_timer = hit_flash_time
 	velocity.x += from_direction * 60.0
 	if health <= 0:
 		_die()
+
+
+func _update_health_bar() -> void:
+	# The fill has a two-pixel inset within the 50px background.
+	var fraction := clampf(float(health) / maxf(float(max_health), 1.0), 0.0, 1.0)
+	_health_bar_fill.size.x = 46.0 * fraction
 
 
 func _die() -> void:

@@ -17,7 +17,8 @@ extends CharacterBody2D
 ## Crouching and sliding swap to a shorter collision shape, which is what lets
 ## you duck under enemy fire. The shapes live in the scene; the matching poses
 ## and muzzle offsets come from the sprite sheet, so changing a shape's height
-## no longer moves the art on its own — see MUZZLE_STAND / MUZZLE_CROUCH.
+## no longer moves the art on its own — see MUZZLE, which is keyed on the firing
+## pose rather than on the stance.
 enum State { NORMAL, CROUCH, SLIDE }
 
 ## Emitted on every change to `health`, including the reset on respawn. `total`
@@ -30,13 +31,44 @@ signal health_changed(current: int, total: int)
 ## heard about switches would start blank.
 signal weapon_changed(weapon: Weapon)
 
-## Where the revolver's muzzle sits in each stance, in Visuals-local pixels for
-## a right-facing player. Measured off the muzzle flashes painted into the sprite
-## sheet — shoot[3..6] and crouch[7] — rather than derived from the collision
-## height, because the crouched firing pose reaches much further forward than a
-## fraction of the stance height would predict. See tools/slice_player_sheet.py.
-const MUZZLE_STAND := Vector2(62, -130)
-const MUZZLE_CROUCH := Vector2(80, -88)
+## Emitted on every change to `flask_charges`, including the opening fill in
+## _ready. Same contract as health_changed — `total` is flask_charges_max, so the
+## readout can size itself from the signal alone.
+signal flask_changed(current: int, total: int)
+
+## Where the revolver's muzzle sits in each firing POSE, in Visuals-local pixels
+## for a right-facing player. Measured off the muzzle flashes painted into the
+## sprite sheet rather than derived from the collision height, because a firing
+## pose reaches much further forward than a fraction of the stance height would
+## predict. tools/slice_player_sheet.py prints all three on every run.
+##
+## Per pose and not per stance, which is the change sheet 3 forced: it draws
+## three different firing poses where sheet 2 drew one, and their barrels are
+## 37px apart in x and 39px in y. Keying this on the stance would have put every
+## running shot a body-width behind the gun.
+const MUZZLE_STAND := Vector2(72, -136)
+const MUZZLE_RUN := Vector2(109, -106)
+const MUZZLE_AIR := Vector2(79, -145)
+## The one that isn't measured. Sheet 3 dropped the crouched firing pose sheet 2
+## had — no crouch frame draws a gun at all, and the kneel's only visible hands
+## are the face-height one at (+23, -82) and a trailing one at (-29, -31), so
+## there is not even a hand to hang it on. This is the front of the chest at the
+## silhouette's leading edge, which reads as firing from the hip.
+## See ANIMATION.md > Known gaps.
+const MUZZLE_CROUCH := Vector2(30, -62)
+
+## Muzzle offset per firing pose, so bullets leave the barrel the player can
+## actually see. `slide` is in here because you can fire mid-slide even though
+## the slide poses draw no gun; it borrows the crouch offset, which is the
+## closest thing to right for a body that low.
+const MUZZLE: Dictionary = {
+	&"shoot": MUZZLE_STAND,
+	&"run_shoot": MUZZLE_RUN,
+	&"jump_shoot": MUZZLE_AIR,
+	&"crouch": MUZZLE_CROUCH,
+	&"crouch_walk": MUZZLE_CROUCH,
+	&"slide": MUZZLE_CROUCH,
+}
 
 ## How long the firing pose stays up after a shot. Independent of the weapon's
 ## `muzzle_flash_time`, which is far shorter than a readable pose: the revolver
@@ -47,27 +79,60 @@ const SHOOT_POSE_TIME := 0.25
 ## How long the landing clip holds before idle takes over.
 const LAND_POSE_TIME := 0.14
 
-## The sprite's authored scale — the 187px figure on the sheet fitted to the
-## 170px collision box (see ANIMATION.md). Squash and stretch multiply it, so it
-## has to be a constant here: reading the node's current scale back would
-## compound the squash every frame.
-const SPRITE_SCALE := 0.9
+## The clips that are a full two-step locomotion cycle: they get time-scaled to
+## the speed the body is travelling, they bob, and they fire footsteps. Both are
+## authored at the same fps, but each is measured off the resource rather than
+## assumed — see _measure_run_cycles().
+const RUN_CYCLE_CLIPS: Array[StringName] = [&"run", &"run_shoot"]
 
-## The two clips with a muzzle flash painted into the art — shoot[3..6] and
-## crouch[7]. They restart on every shot so the painted flash keeps step with
-## the bullet leaving the muzzle.
-const PAINTED_FLASH_CLIPS: Array[StringName] = [&"shoot", &"crouch_shoot"]
+## Where in each run cycle the leading boot is flat on the ground, in frames,
+## measured off the sheet at the widest point of the boot band and printed by
+## tools/slice_player_sheet.py on every run. The second contact is half a cycle
+## later — both clips are two steps — so 7 and 3 are the same value here, as are
+## 6 and 2.
+##
+## The two clips do not agree, and that is the art rather than a mistake: the
+## slicer scores pairs of frames half a cycle apart and `run`'s best pair is
+## (3, 7) while `run_shoot`'s is (2, 6). run_shoot's is also the more symmetric
+## of the two — 117 against 117px, versus 101 against 121 for run.
+##
+## Used by both the run bob (which puts its low points here) and the footstep
+## sounds (which fire here). Shared so the sound and the bounce cannot drift
+## apart: a step you hear at a different moment from the one you see is worse
+## than either being slightly off on its own.
+const RUN_CONTACT_PHASE: Dictionary = {&"run": 7.0, &"run_shoot": 6.0}
+
+## The sprite's authored scale — the 168px figure on the sheet against the 170px
+## collision box (see ANIMATION.md). Squash and stretch multiply it, so it has
+## to be a constant here: reading the node's current scale back would compound
+## the squash every frame.
+const SPRITE_SCALE := 1.0
+
+## Clips that snap back to frame 0 on every shot, so the painted flash keeps
+## step with the bullet leaving the muzzle.
+##
+## Only the standing pose. `run_shoot` and `jump_shoot` have flashes painted in
+## too, but restarting them would pin the legs to the first two frames of the
+## cycle at a revolver fire_interval of 0.18s — and those are the two frames of
+## the strip with no flash drawn, so it would suppress the very thing the
+## restart exists to synchronise. Left free-running, six of run_shoot's eight
+## frames and four of jump_shoot's five are flashing anyway.
+const SHOT_SYNCED_CLIPS: Array[StringName] = [&"shoot"]
 
 ## Clips that can be on screen when a shot goes off but have no flash painted
-## in. ANIMATION.md lists this as a known gap in the sheet: firing on the run or
-## in the air spawns a bullet, it just isn't acted out and nothing flashes. A
-## code-drawn flash fills exactly that hole — and only that hole, because
-## drawing one over a painted pose would flash the shot twice.
+## in, where a code-drawn one fills the hole. Only that hole: drawing one over a
+## painted pose would flash the shot twice.
 ##
-## `slide` is deliberately absent even though you can fire mid-slide. The slide
-## poses have no gun drawn at all, so a flash there reads as coming from an
-## empty hand; that one stays a job for the art rather than for this.
-const UNPAINTED_FLASH_CLIPS: Array[StringName] = [&"run", &"jump", &"fall"]
+## Sheet 3 covers running and airborne fire, so this is down to the crouch,
+## which lost its firing pose in the redraw — no crouch frame draws a gun at
+## all. The flash is at an estimated hand rather than a drawn barrel, and it
+## stays on because crouching is a sustained combat stance: without it, ducking
+## and firing has no feedback beyond the bullet itself.
+##
+## `slide` is deliberately absent even though you can fire mid-slide. It lasts
+## 0.45s and the poses have the character's arms out for balance, so a flash
+## there reads as coming from an empty hand; that one stays a job for the art.
+const UNPAINTED_FLASH_CLIPS: Array[StringName] = [&"crouch", &"crouch_walk"]
 
 @export_group("Run")
 ## ~3 seconds to cross the screen.
@@ -75,15 +140,16 @@ const UNPAINTED_FLASH_CLIPS: Array[StringName] = [&"run", &"jump", &"fall"]
 ## How far the character's feet carry it in ONE step, in screen pixels — the
 ## horizontal gap between the boots at full extension, times the sprite scale.
 ##
-## This is what stops the run skating. The `run` clip is a full cycle of two
-## steps, so at speed `v` the cycle has to last `2 * run_stride / v` seconds; the
-## clip is then time-scaled to fit. Authored at 0.60s it covered 360px per cycle
-## against a drawn step of ~142px, so the character slid ~27% of the way.
+## This is what stops the run skating. Both RUN_CYCLE_CLIPS are a full cycle of
+## two steps, so at speed `v` the cycle has to last `2 * run_stride / v` seconds;
+## the clip is then time-scaled to fit. Left at its authored length it covered
+## 360px per cycle against a drawn step of ~120px, so the character slid a
+## quarter of the way.
 ##
 ## Measured off the sheet, so **re-measure it if the run art changes**: the boot
-## band of the widest frame is the number. Raising it makes the legs turn over
-## slower; lowering it, faster.
-@export var run_stride: float = 142.0
+## band of the widest frame is the number, and tools/slice_player_sheet.py
+## prints it. Raising it makes the legs turn over slower; lowering it, faster.
+@export var run_stride: float = 121.0
 ## Bounds on the time-scaling, so a crawl doesn't freeze the cycle and a speed
 ## boost doesn't blur it into a scribble.
 @export var run_cycle_scale_range := Vector2(0.45, 2.2)
@@ -142,6 +208,24 @@ const UNPAINTED_FLASH_CLIPS: Array[StringName] = [&"run", &"jump", &"fall"]
 @export var hit_knockback: float = 320.0
 @export var hit_trauma: float = 0.5
 
+@export_group("Tequila flask")
+## Swigs carried. This is per-player mutable state and deliberately NOT a shared
+## Resource, for the same reason `_fire_cooldown` isn't one: a `.tres` is a single
+## object, so a flask on one would be everybody's flask. See README > Weapons.
+##
+## Raising this at runtime is what an `Agave Heart` pickup will do; the HUD
+## rebuilds its charge row off it, so nothing else needs editing.
+@export var flask_charges_max: int = 3
+## Health pips restored per swig. A `Silver Flask Cap` will raise this.
+@export var flask_heal_amount: int = 1
+## How long the whole swig takes. Deliberate enough that drinking mid-firefight
+## is a decision, short enough not to be annoying in a prototype.
+@export var drink_duration: float = 0.65
+## How far into the drink the healing actually lands, measured from the press.
+## Must be less than `drink_duration` — the tail is the recovery, where you have
+## already paid the charge and are still committed.
+@export var drink_heal_delay: float = 0.45
+
 @export_group("Juice")
 ## Kicked-up dust: takeoff, landing, running, sliding, skidding, and the smoke
 ## off the muzzle. One scene for all of them — the spawner varies velocity, size
@@ -175,11 +259,25 @@ const UNPAINTED_FLASH_CLIPS: Array[StringName] = [&"run", &"jump", &"fall"]
 @export var skid_min_speed: float = 300.0
 @export var skid_dust_interval: float = 0.09
 
+@export_group("Audio")
+## Boots on dirt. Picked round-robin so consecutive steps alternate — one sample
+## on repeat reads as a machine rather than a person. Two is enough; more is a
+## matter of dropping them in the array.
+##
+## The slide's loop is NOT here: it lives on the SlideSfx node in player.tscn,
+## because a loop needs a player of its own to be started and stopped rather than
+## a voice borrowed from the Sfx pool.
+@export var footstep_sounds: Array[AudioStream] = []
+@export_range(-40.0, 12.0) var footstep_volume_db: float = -9.0
+
 ## 1 for right, -1 for left. Read by the muzzle and by anything that needs to
 ## know which way the player is pointed.
 var facing: int = 1
 ## Read freely; write only through _set_health(), or the HUD misses the change.
 var health: int
+## Swigs left. Same contract as `health`: write only through
+## _set_flask_charges(), which clamps to 0..flask_charges_max and emits.
+var flask_charges: int
 ## The weapon currently in hand. Read-only — it's a shared Resource, so writing
 ## to its fields would edit that weapon for everyone holding it. Switch with
 ## _set_weapon().
@@ -203,6 +301,13 @@ var _shoot_pose_timer: float = 0.0
 var _land_timer: float = 0.0
 var _slide_timer: float = 0.0
 var _slide_cooldown_timer: float = 0.0
+## Counts down from `drink_duration`. Non-zero means a swig is in progress, which
+## is both the "don't drink again" latch and the gate on shooting and sliding.
+var _drink_timer: float = 0.0
+## Raised on the press and cleared when the heal lands, so the charge is spent up
+## front and the health arrives late. Without it a re-press during the recovery
+## tail would heal twice off one charge.
+var _drink_heal_pending: bool = false
 ## This frame's steering input, cached by _handle_move() so the animation can
 ## tell "running" from "sliding to a halt" without polling Input a second time.
 var _move_input: float = 0.0
@@ -213,15 +318,21 @@ var _stretch: float = 0.0
 var _recoil_timer: float = 0.0
 var _dust_timer: float = 0.0
 var _skid_cooldown: float = 0.0
-## Authored length of one `run` cycle, read off the SpriteFrames rather than
-## hardcoded, so retiming the clip in build_sprite_frames.py doesn't silently
-## desync the cadence matching from it.
-var _run_cycle_time: float = 0.0
+## Authored length of each RUN_CYCLE_CLIPS entry in seconds, read off the
+## SpriteFrames rather than hardcoded, so retiming a clip in
+## build_sprite_frames.py doesn't silently desync the cadence matching from it.
+var _cycle_time: Dictionary = {}
 ## Raised by _handle_shoot() and cleared by _update_animation(). Without it the
 ## firing clip free-runs: `shoot` loops in 0.25s and the revolver fires every
 ## 0.18s, so held fire would drift the painted flashes out of step with the
 ## bullets actually leaving the muzzle.
 var _shot_this_frame: bool = false
+## Last `run` frame index seen by _update_footsteps(), so it can spot the moment
+## the clip crosses INTO a contact frame rather than firing for every frame the
+## sprite happens to be sitting on one.
+var _prev_run_frame: int = -1
+## Alternates the entries of `footstep_sounds`.
+var _footstep_index: int = 0
 
 @onready var _visuals: Node2D = $Visuals
 @onready var _sprite: AnimatedSprite2D = $Visuals/Sprite
@@ -230,26 +341,41 @@ var _shot_this_frame: bool = false
 @onready var _crouch_shape: CollisionShape2D = $CrouchShape
 @onready var _ceiling_check: ShapeCast2D = $CeilingCheck
 @onready var _camera := $Camera2D as PlayerCamera2D
+@onready var _slide_sfx: AudioStreamPlayer2D = $SlideSfx
 
 
 func _ready() -> void:
 	_recalculate_jump()
 	_set_health(max_health)
+	# Explicitly rather than by initialising the var, so the opening fill goes
+	# through the one writer and the HUD hears about it like any other change.
+	_set_flask_charges(flask_charges_max)
 	_set_weapon(0)
+	# Ahead of `_spawn_point`, so a checkpointed retry also moves the fall-death
+	# fallback with the player. Returns the position the level authored when
+	# there is no checkpoint for this level, so an ordinary launch is unchanged.
+	global_position = GameState.get_respawn_position(global_position)
+	# The camera's own _ready has already run and smoothing is on, so without
+	# this it would sweep in from the authored spawn on the first frame after a
+	# checkpoint respawn.
+	_camera.reset_smoothing()
 	_spawn_point = global_position
 	_fall_death_y = _compute_fall_death_y()
-	_measure_run_cycle()
+	_measure_run_cycles()
 	add_to_group("player")
 
 
-## The authored duration of the run cycle, straight off the resource.
-func _measure_run_cycle() -> void:
+## The authored duration of each locomotion cycle, straight off the resource.
+func _measure_run_cycles() -> void:
 	var frames := _sprite.sprite_frames
-	if frames == null or not frames.has_animation(&"run"):
+	if frames == null:
 		return
-	var fps := frames.get_animation_speed(&"run")
-	if fps > 0.0:
-		_run_cycle_time = frames.get_frame_count(&"run") / fps
+	for clip in RUN_CYCLE_CLIPS:
+		if not frames.has_animation(clip):
+			continue
+		var fps := frames.get_animation_speed(clip)
+		if fps > 0.0:
+			_cycle_time[clip] = frames.get_frame_count(clip) / fps
 
 
 ## The kill plane is derived from the level's CameraBounds rect rather than from
@@ -282,6 +408,9 @@ func _physics_process(delta: float) -> void:
 		return
 
 	_tick_timers(delta)
+	# Ahead of the stance, which refuses to start a slide mid-swig, and well
+	# ahead of _handle_shoot(), which refuses to fire.
+	_handle_drink()
 	_update_stance()
 	_apply_gravity(delta)
 	_handle_jump()
@@ -289,6 +418,9 @@ func _physics_process(delta: float) -> void:
 	# Before the shot, so a switch and a fire on the same frame use the weapon
 	# you just switched to rather than the one you left.
 	_handle_weapon_switch()
+	# Also before the shot: bullets spawn at the muzzle, and where the muzzle is
+	# depends on which firing pose is about to be drawn.
+	_place_muzzle()
 	# After the move curve so the recoil kick survives into this frame's motion.
 	_handle_shoot()
 
@@ -314,6 +446,9 @@ func _physics_process(delta: float) -> void:
 	_shot_this_frame = false
 
 	_update_dust(delta)
+	# Reads the clip and the sprite's current frame, so it has to follow
+	# _update_animation() rather than sit beside the dust it accompanies.
+	_update_footsteps(clip)
 	_update_sprite_transform(delta, clip)
 
 	if is_on_floor():
@@ -332,6 +467,7 @@ func _tick_timers(delta: float) -> void:
 	_slide_cooldown_timer = maxf(_slide_cooldown_timer - delta, 0.0)
 	_recoil_timer = maxf(_recoil_timer - delta, 0.0)
 	_skid_cooldown = maxf(_skid_cooldown - delta, 0.0)
+	_drink_timer = maxf(_drink_timer - delta, 0.0)
 	_update_damage_feedback()
 
 
@@ -351,8 +487,11 @@ func _update_stance() -> void:
 		State.NORMAL:
 			if wants_crouch and is_on_floor():
 				var fast_enough := absf(velocity.x) >= slide_min_speed
+				# No slide launch mid-swig. Crouching itself is still allowed:
+				# it costs nothing, and ducking enemy fire while committed to a
+				# drink is exactly the play worth leaving open.
 				if Input.is_action_just_pressed("crouch") and fast_enough \
-						and _slide_cooldown_timer <= 0.0:
+						and _slide_cooldown_timer <= 0.0 and not is_drinking():
 					_start_slide()
 				else:
 					_set_state(State.CROUCH)
@@ -381,15 +520,27 @@ func _end_slide(still_holding_crouch: bool) -> void:
 ## Assigned directly rather than via set_deferred: deferred calls land after
 ## this frame's physics, which would leave a sliding player standing-height for
 ## the frame they enter a low gap and bounce them off the ceiling.
+##
+## The slide's scrape loop is started and stopped HERE rather than in
+## _start_slide()/_end_slide(), and that is not a stylistic choice.
+## _stand_up_to_jump() cancels a slide by clearing `_slide_timer` and calling
+## this function directly — it never goes through _end_slide() — so a loop
+## bracketed on that pair would keep hissing forever after the first slide you
+## jump out of. This is the one choke point every stance change passes through.
 func _set_state(new_state: State) -> void:
 	if state == new_state:
 		return
+	var was_sliding := state == State.SLIDE
 	state = new_state
+
+	if state == State.SLIDE:
+		_slide_sfx.play()
+	elif was_sliding:
+		_slide_sfx.stop()
 
 	var low := state != State.NORMAL
 	_stand_shape.disabled = low
 	_crouch_shape.disabled = not low
-	_muzzle.position = MUZZLE_CROUCH if low else MUZZLE_STAND
 
 
 ## Is there room for the standing collision shape where we are now?
@@ -482,6 +633,11 @@ func _handle_move(delta: float) -> void:
 func _handle_shoot() -> void:
 	if weapon == null or weapon.projectile_scene == null:
 		return
+	# Both hands are busy. This is the cost that makes the flask a decision
+	# rather than a free button, and it's checked here rather than by clearing
+	# `_fire_cooldown` so a held trigger resumes the instant the swig ends.
+	if is_drinking():
+		return
 
 	var pulled := Input.is_action_pressed("shoot") if weapon.automatic \
 			else Input.is_action_just_pressed("shoot")
@@ -500,6 +656,12 @@ func _handle_shoot() -> void:
 		get_parent().add_child(bullet)
 		# Position after reparenting, so global_position isn't reinterpreted.
 		bullet.global_position = _muzzle.global_position
+
+	# Outside the pellet loop above, with the recoil and the shake: one trigger
+	# pull is one report, however much lead it puts in the air. Inside it, a
+	# shotgun would fire six overlapping copies of its own blast.
+	Sfx.play_at(weapon.fire_sound, _muzzle.global_position, weapon.fire_volume_db,
+		randf_range(0.96, 1.04))
 
 	# Recoil would only fight the slide's own decay curve, so skip it there.
 	if state != State.SLIDE:
@@ -544,17 +706,144 @@ func _set_weapon(index: int) -> void:
 	weapon_changed.emit(weapon)
 
 
+# --- Tequila flask -----------------------------------------------------------
+
+## A swig is in progress. Read by the shooting and slide gates, and by anything
+## that wants to know the player is committed.
+func is_drinking() -> bool:
+	return _drink_timer > 0.0
+
+
+## Every reason a swig can be refused, in one place so the HUD, the pickup and
+## the input handler all agree on it.
+##
+## Pause deliberately isn't in the list: this is only ever reached from
+## `_physics_process`, which `get_tree().paused` already stops. Adding a check
+## here would imply the flask can be drunk from somewhere else, and it can't.
+func can_drink() -> bool:
+	return not _dead \
+		and not is_drinking() \
+		and flask_charges > 0 \
+		and health < max_health
+
+
+## The charge is spent on the press and the health arrives `drink_heal_delay`
+## later — that split is the whole feel of the thing. Drinking a frame before a
+## bullet lands costs you the swig and doesn't save you, which is what makes
+## reaching for the flask a read of the fight rather than a reflex.
+func _handle_drink() -> void:
+	# The heal lands first, so a swig started on the very frame the last one
+	# finishes still pays out. `_drink_timer` was already decremented this frame
+	# by _tick_timers(), so this compares against the elapsed time.
+	if _drink_heal_pending and _drink_timer <= drink_duration - drink_heal_delay:
+		_drink_heal_pending = false
+		_set_health(health + flask_heal_amount)
+		_spawn_drink_puff(0.9)
+
+	if not Input.is_action_just_pressed("heal") or not can_drink():
+		return
+
+	_set_flask_charges(flask_charges - 1)
+	_drink_timer = drink_duration
+	_drink_heal_pending = true
+	# Feedback on the press, before anything has been healed, so the swig reads
+	# as having started. The warm tint over the same window is applied by
+	# _update_damage_feedback(), the sole writer of `modulate`.
+	#
+	# The sheet has no drinking pose (see ANIMATION.md), so the clip is left
+	# alone: the player keeps whatever they were doing rather than snapping to a
+	# substitute that would read worse than none. Faking one is a job for the art.
+	_spawn_drink_puff(0.55)
+
+
+## The amber puff off the bottle. Reuses `dust_scene` rather than adding an
+## effect scene, tinted through `self_modulate` — `modulate` is the channel
+## dust_puff.gd fades on, so writing rgb there would clobber its own alpha tween.
+func _spawn_drink_puff(size: float) -> void:
+	var puff := _spawn_dust(
+		global_position + Vector2(facing * 14.0, -120.0),
+		Vector2(facing * 40.0, -90.0), size, 0.45, 0.7)
+	if puff != null:
+		puff.self_modulate = Color(1.0, 0.78, 0.34)
+
+
+## The one place `flask_charges` is written — same contract `_set_health()` holds
+## for the pip row. Clamped rather than trusted, so no caller can drive it
+## negative or past the maximum however it does its arithmetic.
+func _set_flask_charges(value: int) -> void:
+	var next := clampi(value, 0, maxi(flask_charges_max, 0))
+	if next == flask_charges:
+		return
+	flask_charges = next
+	flask_changed.emit(flask_charges, flask_charges_max)
+
+
+## Restores charges from the world — a `Tequila Stash`. Returns whether any were
+## actually taken, so the pickup can leave itself in the level when the flask is
+## already full instead of vanishing for nothing.
+func add_flask_charges(amount: int = 1) -> bool:
+	if amount <= 0 or flask_charges >= flask_charges_max:
+		return false
+	_set_flask_charges(flask_charges + amount)
+	return true
+
+
+## What resting at a saloon does to the player: health and flask both back to
+## full. A dead player is refused — death routes through GameState, and quietly
+## reviving one here would undo it.
+func rest_refill() -> void:
+	if _dead:
+		return
+	_drink_timer = 0.0
+	_drink_heal_pending = false
+	_set_health(max_health)
+	_set_flask_charges(flask_charges_max)
+
+
 # --- Animation ---------------------------------------------------------------
+
+## The pose the player would be in if they fired right now.
+##
+## One function, because three separate things need the answer and they must not
+## disagree: the clip that gets played, the muzzle the bullet leaves from, and
+## the gate on the code-drawn flash. Sheet 2 had a single firing pose and the
+## muzzle could be keyed on the stance; sheet 3 draws standing, running and
+## airborne versions with barrels 37px apart, so a stance-keyed muzzle would
+## spawn running shots a body-width behind the gun.
+func _firing_pose() -> StringName:
+	match state:
+		State.SLIDE:
+			# No firing pose at all — the slide poses draw no gun. The clip is
+			# the slide either way; this exists so the muzzle has somewhere to be.
+			return &"slide"
+		State.CROUCH:
+			# Sheet 3 dropped the crouched firing pose, so these are the plain
+			# crouch clips and UNPAINTED_FLASH_CLIPS draws the flash instead.
+			return &"crouch_walk" if not is_zero_approx(_move_input) else &"crouch"
+		_:
+			if not is_on_floor():
+				return &"jump_shoot"
+			if not is_zero_approx(_move_input):
+				return &"run_shoot"
+			return &"shoot"
+
+
+## Puts the muzzle where the pose about to be drawn holds the gun.
+##
+## Called before _handle_shoot() rather than after _update_animation(), because
+## the bullet has to spawn on the frame the trigger is pulled and the animation
+## is not chosen until after move_and_slide(). The one frame that can disagree
+## is a shot fired on the very frame of a landing, where the muzzle is still the
+## airborne one — 30px, for one frame, on a pose that was airborne when the
+## trigger went down.
+func _place_muzzle() -> void:
+	_muzzle.position = MUZZLE.get(_firing_pose(), MUZZLE_STAND)
+
 
 ## Picks a clip from the state the movement code has already settled on, so this
 ## is a readout and never a decision — nothing here may write to `state`,
 ## `velocity` or `facing`.
 ##
-## The sheet has no firing pose for a moving or airborne character, so shooting
-## on the run keeps the run cycle: the shot still fires, it just isn't acted
-## out. Substituting the standing shoot clip would stop the legs dead mid-stride
-## at a `run_speed` of 600, which reads far worse than no firing pose at all.
-## Faking one is a job for the art, not for this function.
 ## Returns the clip it settled on, so the shot effects can be gated on the same
 ## decision instead of working the state out a second time and drifting from it.
 func _update_animation() -> StringName:
@@ -562,14 +851,17 @@ func _update_animation() -> StringName:
 	var clip := &"idle"
 
 	match state:
-		State.SLIDE:
-			clip = &"slide"
-		State.CROUCH:
-			# The one stance where firing on the move *is* drawn — crouch[7] has
-			# the revolver out — so it doesn't need the exception above.
-			clip = &"crouch_shoot" if shooting else &"crouch"
+		State.SLIDE, State.CROUCH:
+			# Neither stance has a firing pose of its own, so _firing_pose()
+			# returns the ordinary clip and the branch collapses to one call.
+			clip = _firing_pose()
 		State.NORMAL:
-			if not is_on_floor():
+			if shooting:
+				# Ahead of everything else: sheet 3 draws the running and
+				# airborne firing poses that sheet 2 was missing, so a shot no
+				# longer has to be left unacted-out to keep the legs turning.
+				clip = _firing_pose()
+			elif not is_on_floor():
 				clip = &"jump" if velocity.y < 0.0 else &"fall"
 			elif not is_zero_approx(_move_input):
 				# Deliberately ahead of `land`: touching down while still holding
@@ -577,14 +869,12 @@ func _update_animation() -> StringName:
 				# the run cycle back up beats a 0.14s stumble. `land` is
 				# therefore only reached on a standing vertical drop.
 				clip = &"run"
-			elif shooting:
-				clip = &"shoot"
 			elif _land_timer > 0.0:
 				clip = &"land"
 
-	# Only the painted-flash clips restart on a shot. Restarting `run` every
-	# trigger pull would stutter the legs at a run_speed of 600.
-	_play(clip, _shot_this_frame and clip in PAINTED_FLASH_CLIPS)
+	# Only the standing firing pose restarts on a shot — see SHOT_SYNCED_CLIPS
+	# for why the two moving ones are left to free-run.
+	_play(clip, _shot_this_frame and clip in SHOT_SYNCED_CLIPS)
 	_match_run_cadence(clip)
 	return clip
 
@@ -601,13 +891,14 @@ func _update_animation() -> StringName:
 ## accel and decel ramps, where a fixed rate has the legs turning over at full
 ## sprint cadence while the body is barely moving.
 func _match_run_cadence(clip: StringName) -> void:
-	if clip != &"run" or _run_cycle_time <= 0.0 or run_stride <= 0.0:
+	var authored: float = _cycle_time.get(clip, 0.0)
+	if authored <= 0.0 or run_stride <= 0.0:
 		_sprite.speed_scale = 1.0
 		return
 
 	var wanted := 2.0 * run_stride / maxf(absf(velocity.x), 1.0)
 	_sprite.speed_scale = clampf(
-		_run_cycle_time / wanted,
+		authored / wanted,
 		run_cycle_scale_range.x,
 		run_cycle_scale_range.y
 	)
@@ -624,6 +915,12 @@ func _match_run_cadence(clip: StringName) -> void:
 func _play(clip: StringName, restart: bool = false) -> void:
 	if _sprite.animation != clip:
 		_sprite.play(clip)
+		# play() on an already-playing sprite does NOT rewind, so the frame
+		# index carries across a clip change — and `run` and `run_shoot` put
+		# their contacts on different frames. Without this, opening fire on the
+		# run can land straight on the new clip's contact frame and crack off a
+		# footstep with the boot visibly mid-air.
+		_prev_run_frame = -1
 	elif restart:
 		_sprite.play(clip)
 		_sprite.frame = 0
@@ -684,20 +981,20 @@ func _update_sprite_transform(delta: float, clip: StringName) -> void:
 ## because this moves the whole node, `_muzzle.position` stays exactly
 ## MUZZLE_STAND and the code-drawn flash stays attached to the hand.
 func _update_run_bob(clip: StringName) -> void:
-	if clip != &"run" or run_bob <= 0.0:
+	if not clip in RUN_CYCLE_CLIPS or run_bob <= 0.0:
 		_visuals.position.y = 0.0
 		return
 
 	var frames := _sprite.sprite_frames
-	var count := frames.get_frame_count(&"run") if frames != null else 0
+	var count := frames.get_frame_count(clip) if frames != null else 0
 	if count <= 0:
 		_visuals.position.y = 0.0
 		return
 
-	# Two bounces per cycle — the clip is two steps. The 2.75 puts the low
-	# points on the contact frames, which measure widest at the boot band.
+	# Two bounces per cycle — the clip is two steps. RUN_CONTACT_PHASE puts the
+	# low points on the contact frames, which measure widest at the boot band.
 	var f := float(_sprite.frame) + _sprite.get_frame_progress()
-	var phase := TAU * 2.0 * (f - 2.75) / float(count)
+	var phase := TAU * 2.0 * (f - float(RUN_CONTACT_PHASE[clip])) / float(count)
 	_visuals.position.y = -run_bob * 0.5 * (1.0 - cos(phase))
 
 
@@ -746,6 +1043,57 @@ func _update_dust(delta: float) -> void:
 			Vector2(away * randf_range(70.0, 160.0), randf_range(-70.0, -15.0)), 0.42)
 
 
+## Footsteps, fired off the run clip's contact frames rather than off a timer.
+##
+## The obvious implementation is to hang them on _update_dust()'s
+## `run_dust_interval`, and it is wrong: that interval is a fixed 0.17s, while
+## _match_run_cadence() time-scales the clip to the speed the body is actually
+## travelling. On the accel and decel ramps the two disagree, and a step heard
+## while the boot is visibly mid-air is exactly the artefact the cadence matching
+## was written to remove. Driving off the frame index inherits that time-scaling
+## for free and needs no interval of its own.
+##
+## Crossings are detected by frame index alone. That is safe because a frame is
+## never shorter than one physics tick here: the clip is authored at 15fps and
+## `run_cycle_scale_range` caps the speed-up at 2.2, so the briefest frame is
+## ~30ms against a 60Hz tick. Raise that cap far enough and this would start
+## missing steps.
+func _update_footsteps(clip: StringName) -> void:
+	# The speed floor is not redundant with the clip check. `run` is chosen off
+	# the steering input, not off the velocity, so a player leaning into a wall —
+	# the tunnel mouth, most obviously — keeps the run cycle turning over on the
+	# spot. Reusing _update_dust()'s threshold rather than adding one of its own
+	# keeps the boots and the puffs agreeing about what counts as a stride.
+	if not clip in RUN_CYCLE_CLIPS or not is_on_floor() \
+			or footstep_sounds.is_empty() \
+			or absf(velocity.x) <= run_dust_min_speed:
+		_prev_run_frame = -1
+		return
+
+	var frames := _sprite.sprite_frames
+	var count := frames.get_frame_count(clip) if frames != null else 0
+	if count <= 0:
+		_prev_run_frame = -1
+		return
+
+	var frame := _sprite.frame
+	if frame == _prev_run_frame:
+		return
+	_prev_run_frame = frame
+
+	# Rounded, not floored: a contact phase measured between two frames reads as
+	# landing on the nearer of them.
+	var phase: float = RUN_CONTACT_PHASE[clip]
+	var contact_a := int(round(phase)) % count
+	var contact_b := int(round(phase + count * 0.5)) % count
+	if frame != contact_a and frame != contact_b:
+		return
+
+	var sound := footstep_sounds[_footstep_index % footstep_sounds.size()]
+	_footstep_index += 1
+	Sfx.play_at(sound, global_position, footstep_volume_db, randf_range(0.92, 1.08))
+
+
 ## Fills the flash the sheet doesn't paint. Takes the clip rather than deciding
 ## for itself — see UNPAINTED_FLASH_CLIPS for which poses need it and why slide
 ## is excluded.
@@ -766,10 +1114,13 @@ func _update_shot_fx(clip: StringName) -> void:
 ## `at` is a global position. Every tunable is read in the puff's _ready, so
 ## they are all set before add_child(); the position has to be written after it,
 ## or reparenting reinterprets it.
+##
+## Returns the puff so a caller that wants to tint it can — see
+## _spawn_drink_puff(). Every other call site ignores it.
 func _spawn_dust(at: Vector2, vel: Vector2, size: float, life: float = 0.36,
-		alpha: float = 0.8) -> void:
+		alpha: float = 0.8) -> Node2D:
 	if dust_scene == null:
-		return
+		return null
 
 	var puff := dust_scene.instantiate()
 	puff.velocity = vel
@@ -782,6 +1133,7 @@ func _spawn_dust(at: Vector2, vel: Vector2, size: float, life: float = 0.36,
 	# off, not to the body that kicked it, so it must not travel at run_speed.
 	get_parent().add_child(puff)
 	puff.global_position = at
+	return puff
 
 
 # --- Damage ------------------------------------------------------------------
@@ -795,6 +1147,11 @@ func _update_damage_feedback() -> void:
 	elif _invuln_timer > 0.0:
 		var dim := int(_invuln_timer * 12.0) % 2 == 0
 		_visuals.modulate = Color(1.0, 1.0, 1.0, 0.35 if dim else 1.0)
+	elif is_drinking():
+		# Ranked below the i-frame blink deliberately. You can be drinking and
+		# invulnerable at once, and how long the i-frames have left is the more
+		# urgent of the two things to be able to read.
+		_visuals.modulate = Color(1.35, 1.05, 0.62)
 	else:
 		_visuals.modulate = Color.WHITE
 
@@ -837,6 +1194,11 @@ func die() -> void:
 	if _dead:
 		return
 	_dead = true
+	# A swig in flight must not pay out into a corpse: `_handle_drink()` runs
+	# every physics frame and would otherwise put a pip back on the bar behind
+	# the death screen, which reads as a bug.
+	_drink_timer = 0.0
+	_drink_heal_pending = false
 	# Zeroed for the benefit of the HUD: falling out of the level kills you
 	# without ever touching health, and a full bar behind the death screen reads
 	# as a bug. Redundant on the damage route, where it's already 0.

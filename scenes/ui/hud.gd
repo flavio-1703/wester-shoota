@@ -1,7 +1,8 @@
 class_name Hud
 extends CanvasLayer
 
-## The in-game readout, pinned to the top-left: health, and the weapon in hand.
+## The in-game readout, pinned to the top-left: health, the tequila flask, and
+## the weapon in hand.
 ##
 ## Owned by GameState and instantiated once at startup, exactly like the pause
 ## and game over menus: levels don't carry a HUD and don't need to know one
@@ -50,11 +51,23 @@ const SLOT_FRAME_IDLE := Color(0.2, 0.16, 0.19)
 ## reshuffle every time you cycle.
 const SLOT_IDLE_ALPHA := 0.45
 
+## Tequila charges, built from the player's `flask_charges_max` the same way the
+## pips are built from `max_health`. Nothing here assumes three of them — an
+## `Agave Heart` raising the maximum at runtime widens the row on the next frame.
+## Narrower than a health pip on purpose: the flask is the secondary readout and
+## should not compete with the bar it refills.
+const CHARGE_SIZE := Vector2(30.0, 24.0)
+const CHARGE_FULL := Color(0.93, 0.71, 0.26)
+const CHARGE_EMPTY := Color(0.2, 0.16, 0.19)
+
 var _player: Player
 var _pips: Array[ColorRect] = []
 var _slots: Array[ColorRect] = []
+var _charges: Array[ColorRect] = []
 
 @onready var _pip_row: HBoxContainer = %PipRow
+@onready var _charge_row: HBoxContainer = %ChargeRow
+@onready var _flask_label: Label = %FlaskLabel
 @onready var _slot_row: HBoxContainer = %SlotRow
 @onready var _weapon_label: Label = %WeaponLabel
 
@@ -68,12 +81,21 @@ func _process(_delta: float) -> void:
 		_attach(get_tree().get_first_node_in_group("player") as Player)
 	visible = is_instance_valid(_player)
 
+	if not is_instance_valid(_player):
+		return
+
 	# Self-heal for a `weapons` list that grows at runtime, which is exactly what
 	# unlocking one will do. `weapon_changed` can't cover it — that fires on a
 	# switch, and gaining a weapon isn't one. Cheap because it only compares two
 	# sizes; the rebuild itself runs on the frame the list actually changed.
-	if is_instance_valid(_player) and _slots.size() != _player.weapons.size():
+	if _slots.size() != _player.weapons.size():
 		_refresh_slots()
+
+	# The same self-heal, for the same reason: `flask_changed` fires when the
+	# charges move, and an `Agave Heart` raising `flask_charges_max` isn't a
+	# change to the charges — it's a change to how many the row has to draw.
+	if _charges.size() != _player.flask_charges_max:
+		_on_flask_changed(_player.flask_charges, _player.flask_charges_max)
 
 
 ## Connecting and reading the current value happen together on purpose: the
@@ -88,6 +110,8 @@ func _attach(player: Player) -> void:
 	_on_health_changed(player.health, player.max_health)
 	player.weapon_changed.connect(_on_weapon_changed)
 	_on_weapon_changed(player.weapon)
+	player.flask_changed.connect(_on_flask_changed)
+	_on_flask_changed(player.flask_charges, player.flask_charges_max)
 
 
 func _on_health_changed(current: int, total: int) -> void:
@@ -95,6 +119,16 @@ func _on_health_changed(current: int, total: int) -> void:
 		_rebuild_pips(total)
 	for i in _pips.size():
 		_pips[i].color = PIP_FULL if i < current else PIP_EMPTY
+
+
+## Drives both halves of the readout off the one signal, so a swig, a saloon
+## refill and a raised maximum all land through the same path.
+func _on_flask_changed(current: int, total: int) -> void:
+	if _charges.size() != total:
+		_rebuild_charges(total)
+	for i in _charges.size():
+		_charges[i].color = CHARGE_FULL if i < current else CHARGE_EMPTY
+	_flask_label.text = "TEQUILA %d / %d" % [current, total]
 
 
 ## Null is a real case, not a defensive check: a player whose `weapons` list is
@@ -144,6 +178,19 @@ func _rebuild_slots() -> void:
 		slot.add_child(swatch)
 		_slot_row.add_child(slot)
 		_slots.append(slot)
+
+
+func _rebuild_charges(count: int) -> void:
+	for charge in _charges:
+		charge.queue_free()
+	_charges.clear()
+
+	for i in count:
+		var charge := ColorRect.new()
+		charge.custom_minimum_size = CHARGE_SIZE
+		charge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_charge_row.add_child(charge)
+		_charges.append(charge)
 
 
 func _rebuild_pips(count: int) -> void:

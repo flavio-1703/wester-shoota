@@ -51,6 +51,14 @@ extends Resource
 ## Screen shake per shot.
 @export var trauma: float = 0.35
 @export var muzzle_flash_time: float = 0.05
+## Fired once per trigger pull, not once per pellet — see Player._handle_shoot().
+##
+## A stream is data, so it belongs here with the rest of what separates one
+## weapon from another; it is also read-only, which is what keeps this inside the
+## rule above about never writing to a shared `.tres`. The playback itself is the
+## Sfx autoload's, and no state for it lives on this resource.
+@export var fire_sound: AudioStream
+@export_range(-40.0, 12.0) var fire_volume_db: float = 0.0
 
 
 ## Deviation from horizontal for pellet `index`, in radians.

@@ -1,7 +1,8 @@
-[gd_resource type="Resource" script_class="Weapon" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="Weapon" load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/weapons/weapon.gd" id="1_weapon"]
 [ext_resource type="PackedScene" path="res://scenes/projectiles/pellet.tscn" id="2_pellet"]
+[ext_resource type="AudioStream" path="res://assets/audio/shotgun_shot.tres" id="3_shot"]
 
 [resource]
 script = ExtResource("1_weapon")
@@ -15,3 +16,5 @@ spread_degrees = 26.0
 recoil_impulse = 900.0
 trauma = 0.6
 muzzle_flash_time = 0.09
+fire_sound = ExtResource("3_shot")
+fire_volume_db = -2.0

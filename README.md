@@ -6,12 +6,13 @@ desktop executable.
 **Art direction:** hand-painted / illustrated HD 2D (Ori, Hollow Knight lineage) —
 **not** pixel art. Authored at 1920×1080.
 
-The **player is animated** from `assets/characters/player_spritesheet_2.png` —
-nine clips covering run, jump, fall, land, slide, shoot and crouch. See
+The **player is animated** from `assets/characters/player_spritesheet_3.png` —
+eleven clips covering idle, run, jump, fall, land, slide, crouch, crouch-walk and
+three firing poses (standing, running, airborne). See
 [`assets/characters/ANIMATION.md`](assets/characters/ANIMATION.md) for the
-slicing pipeline, the clip table and the gaps (no run-shoot, no crouch-walk, no
-hit or death pose). Everything else — level geometry, enemies, projectiles — is
-still placeholder rectangles.
+slicing pipeline, the clip table and the gaps (no crouched firing pose, no
+drinking pose, no hit or death pose). Everything else — level geometry, enemies,
+projectiles — is still placeholder rectangles.
 
 ## Getting it running
 
@@ -37,6 +38,8 @@ input map, collision layers) are already configured in `project.godot`.
 | Previous weapon | `Q` | Left shoulder |
 | Crouch | `S` / Down | Down, D-pad down |
 | Slide | tap `S` while running | tap Down while running |
+| Drink tequila | `F` | Y / top face button |
+| Rest at a saloon | `R` | B / right face button |
 | Pause | `Esc` | Start |
 | Confirm in menus | `Enter` | A |
 | Debug overlay | `F3` | — |
@@ -47,6 +50,10 @@ the shotgun taps. See [Weapons](#weapons).
 
 Note that crouch shares the down binding, so a gamepad player pushing the stick
 down to aim will crouch. Fine for now; worth revisiting if aiming down is added.
+
+Rest is `R` rather than the conventional `E` because **`E` is already next
+weapon**. Cycling weapons is used constantly and resting is used a handful of
+times per level, so the established binding keeps the good key.
 
 ### Space confirms nothing
 
@@ -140,10 +147,10 @@ inspector under **Juice** on the Player, alongside everything else about the fee
 
 ### The run was skating, and that was most of what looked wrong
 
-The `run` clip is a full cycle of two steps. Authored at a flat 0.60s it covered
-**360px of world travel per cycle** while the drawn step is only about **142px**
-on screen — so the character slid roughly **27%** of the way, feet scrubbing the
-ground. That reads as badly as it sounds and no amount of effects hides it.
+The `run` clip is a full cycle of two steps. Authored at a flat length it covered
+**360px of world travel per cycle** while the drawn step is only about **120px**
+on screen — so the character slid roughly a quarter of the way, feet scrubbing
+the ground. That reads as badly as it sounds and no amount of effects hides it.
 
 `run_stride` (under **Run**) is now the distance one drawn step actually carries
 the body, and the clip is time-scaled to fit: at speed `v` the cycle is made to
@@ -152,14 +159,18 @@ last `2 * run_stride / v`. It is driven off the **live velocity**, not off
 the legs turning over at full sprint cadence while the body is barely moving.
 
 `run_stride` is measured off the sheet by hand, so **re-measure it if the run art
-changes.** `tools/check_player_fx.gd` asserts the ratio and fails below 0.88 or
-above 1.12.
+changes** — `tools/slice_player_sheet.py` prints the number on every run.
+`tools/check_player_fx.gd` asserts the ratio and fails below 0.88 or above 1.12.
+
+Both firing-on-the-move clips go through the same machinery: `RUN_CYCLE_CLIPS`
+is `run` and `run_shoot`, and each one's authored length is read off the
+SpriteFrames rather than assumed, so retiming one in `build_sprite_frames.py`
+cannot silently desync the cadence matching from it.
 
 ### The run bob is code because the art has none
 
-Every run frame was drawn with its feet on the same line — `feet_y` is identical
-across all nine — so the body never rises and the cycle reads as a paper doll
-being slid along. `run_bob` supplies it.
+Every run frame is drawn with its feet on the same line, so the body never rises
+and the cycle reads as a paper doll being slid along. `run_bob` supplies it.
 
 It only ever **lifts, never sinks**: the offset runs from 0 at the contact frames
 to `-run_bob` at the passing frames. Pushing down from a drawn baseline would
@@ -172,10 +183,10 @@ in the character's hand, so the muzzle should rise and fall with the body. Movin
 the whole node leaves `_muzzle.position` at `MUZZLE_STAND` and keeps the
 code-drawn flash attached to the hand.
 
-**What is still wrong is the art, not the timing.** The upper body barely moves
-across the nine frames — align the frames and the head/hat differ by 3–10 while
-the legs differ by 9–20. The arms don't swing and the shoulders don't rotate.
-Nothing in code fixes that; it needs a redrawn cycle.
+Sheet 2's run had a static upper body over scissoring legs; sheet 3's arms swing
+against the legs, which is the half of this that only a redraw could fix. The
+vertical travel is still not in the art — `feet_y` moves 5px across the eight
+frames, and bottom-alignment flattens even that — so the bob stays.
 
 - **Squash and stretch.** The sprite stretches with vertical speed while airborne
   and compresses on landing *in proportion to the impact*, so a hop off a ledge
@@ -191,20 +202,40 @@ Nothing in code fixes that; it needs a redrawn cycle.
 
 ### The muzzle flash fills a gap in the sheet
 
-`ANIMATION.md` records that the sheet has no firing pose for a moving or airborne
-character: the shot fires, but nothing is acted out and **nothing flashes**. The
-flash half of that is now filled in code.
+Sheet 3 draws firing poses for standing, running and airborne, all with the flash
+**painted into the art**. What it doesn't draw is a crouched one — sheet 2 had it
+and the redraw lost it — so `crouch` and `crouch_walk` are the whole of
+`UNPAINTED_FLASH_CLIPS` in `player.gd`, and the code-drawn flash from
+`muzzle_flash.tscn` covers exactly them.
 
-The gate is load-bearing and it cuts both ways. `shoot` and `crouch_shoot` have a
-flash **painted into the art**, so drawing another over them would flash every
-shot twice. `run`, `jump` and `fall` have none, so they get a code-drawn one.
-Those two lists are `PAINTED_FLASH_CLIPS` and `UNPAINTED_FLASH_CLIPS` in
-`player.gd`, and they are a hand-maintained mirror of what the artist has drawn.
-**If `run_shoot` art ever lands, move those clips between the lists.**
+The gate is load-bearing and it cuts both ways: draw one over a painted pose and
+every shot flashes twice, take a clip out of the list without art behind it and
+the shot stops reading as a shot. It is a hand-maintained mirror of what the
+artist has drawn, so **move clips between the lists whenever the sheet changes**
+— `tools/check_player_fx.gd` drives all five stances and is what catches it.
 
 `slide` is deliberately in neither: you can fire mid-slide, but the slide poses
 have no gun drawn at all, so a flash from a visibly empty hand reads worse than
 no flash. That one stays a job for the art.
+
+Only `shoot` restarts on a trigger pull. `run_shoot` and `jump_shoot` are painted
+too, but snapping them back to frame 0 every 0.18s would pin the legs to the two
+frames of the strip that have *no* flash drawn — suppressing the very thing the
+restart exists to synchronise. That list is `SHOT_SYNCED_CLIPS`.
+
+### The muzzle is placed per firing pose, not per stance
+
+Sheet 2 drew one firing pose per stance, so `_set_state()` could put
+`Visuals/Muzzle` where the barrel was. Sheet 3's three standing-height firing
+poses have barrels **37px apart in x and 39px in y**, so a stance-keyed muzzle
+would spawn every running shot a body-width behind the gun.
+
+`_firing_pose()` is now the single source for which pose is on screen, and the
+clip choice, the muzzle offset and the flash gate all read it — three
+reconstructions of the same branch would drift the first time someone reordered
+one. The offsets in `MUZZLE` are measured off the painted flashes by
+`tools/slice_player_sheet.py`, which prints them on every run; `MUZZLE_CROUCH` is
+the only estimated one, because there is no crouched flash left to measure.
 
 `_update_animation()` returns the clip it picked and the flash is gated on that
 return value, rather than working the state out a second time — two copies of
@@ -215,8 +246,8 @@ that decision would drift the first time someone reordered a branch.
 `Visuals/Muzzle` is a **sibling** of `Visuals/Sprite`, and bullets spawn at its
 global position. Squash, stretch and the recoil lean are therefore written to the
 sprite alone: scaling or rotating `Visuals` would drag the muzzle with it and
-quietly move the spawn point off `MUZZLE_STAND` / `MUZZLE_CROUCH`, the constants
-measured off the painted flashes. The sprite's origin sits at the player's feet,
+quietly move the spawn point off the `MUZZLE` offsets measured off the painted
+flashes. The sprite's origin sits at the player's feet,
 which is the pivot squash wants anyway — the boots stay planted.
 
 `_update_sprite_transform()` is the single writer of the sprite's scale and
@@ -235,6 +266,83 @@ Drives the real player through standing, running, airborne and sliding fire and
 asserts the flash appears in exactly two of them; then jumps and asserts the
 sprite stretched, squashed on landing, and that **the muzzle did not move**.
 Non-zero exit on failure. Run it after touching the clip lists or the sheet.
+
+## Sound
+
+Four events make noise: **footsteps, the slide scrape, gunfire, and a bullet
+landing on something that bleeds.** Everything else is still silent.
+
+The samples are **placeholders, synthesised by a script**, in the same spirit as
+the coloured rectangles the rest of the game is prototyped with:
+
+```
+Godot_v4.7.2-stable_win64.exe --headless --path . --script res://tools/gen_sfx.gd
+```
+
+That writes six `AudioStreamWAV` resources into `assets/audio/`. Re-running is
+safe — every generator is seeded, so the output is byte-identical.
+
+They are saved as **`.tres`, not `.wav`**, and that matters: a `.wav` written by
+a script has no `.import` sibling, so `load()` returns null until somebody has
+opened the editor and let the import pipeline run — which breaks a fresh clone
+and every headless check. Saving the resource itself skips the importer.
+
+Swapping in real recordings needs **no code**: drop a file in and assign it to
+the same slot. `fire_sound` is on the weapon `.tres` (so a new weapon still ships
+as one file with no code at all), `impact_sound` is on the projectile scene,
+`footstep_sounds` is an array on the player, and the slide loop is the stream on
+the player's `SlideSfx` node.
+
+`impact_sound` is set on `bullet.tscn` and `pellet.tscn` and left **empty on
+`enemy_bullet.tscn`** — the player being hit wants its own sound, and handing the
+enemies this one would have the dedupe below swallow your shot landing to pay for
+theirs.
+
+Design decisions worth not re-deriving:
+
+- **One-shots go through the `Sfx` autoload, not through a player node on
+  whatever made the noise.** A bullet calls `queue_free()` on the line after its
+  hit and a dying gunslinger frees itself immediately, so a child
+  `AudioStreamPlayer2D` on either would be cut off before a single sample was
+  heard. `Sfx.play_at(stream, position)` borrows one of 16 pooled voices that
+  outlive the caller, stealing the longest-running one if all are busy.
+- **`Sfx` pauses with the game**, unlike `GameState` — these are gameplay
+  sounds, and a slide hissing under the pause menu is the wrong behaviour.
+- **The same stream is played once per 90ms.** A shotgun puts six pellets into
+  one target across about three physics ticks; without that window they stack
+  into a clipped blast. The value sits between the pellet spread below it and
+  the revolver's 0.18s `fire_interval` above it.
+- **The slide loop starts and stops in `_set_state()`, not in
+  `_start_slide()`/`_end_slide()`.** `_stand_up_to_jump()` cancels a slide
+  without ever calling `_end_slide()`, so the obvious bracketing leaves the
+  scrape hissing forever after the first slide you jump out of. `_set_state()`
+  is the one choke point every stance change passes through.
+- **Footsteps fire off the run clip's contact frames, not off a timer.**
+  `_match_run_cadence()` already time-scales the clip to the speed the body is
+  actually travelling, so reading the frame index inherits that for free; a
+  fixed interval drifts out of the stride on the accel and decel ramps. They
+  share `RUN_CONTACT_PHASE` with the run bob, so the step you hear and the step
+  you see cannot come apart, and they reuse `run_dust_min_speed` so a player
+  leaning into a wall doesn't jog on the spot.
+
+No audio bus layout and no volume sliders: everything goes to Master at
+per-stream volumes. Adding an SFX bus later is a `default_bus_layout.tres` plus
+setting `bus` on the pool, and nothing that calls in has to change.
+
+```
+Godot_v4.7.2-stable_win64.exe --headless --path . --script res://tools/check_sfx.gd
+```
+
+Asserts the pool exists and every stream loads with audio in it, that one
+trigger pull is one report, that **six pellets into one gunslinger make one
+impact and not six** (corroborated by the target actually losing health), that
+the scrape loop stops both when a slide runs out *and* when it is jump-cancelled,
+that footsteps fire while running and not while standing or airborne, that the
+pool doesn't grow, and that **pausing silences everything**. Non-zero exit on
+failure.
+
+The samples themselves are not checked by any of that — a `.tres` full of the
+wrong noise passes every assertion above. **Listen to them.**
 
 ## Crouch and slide
 
@@ -258,22 +366,29 @@ assets/            art + audio, plus CREDITS.md (fill it in per source)
 assets/backgrounds/  background_reference.png + generated/ (built, not hand-edited)
 assets/fx/         generated/ — dust puff + muzzle flash (built, not hand-edited)
 assets/characters/ player sheet + the sliced grid; ANIMATION.md documents both
+assets/audio/      AudioStreamWAV .tres files (built, not hand-edited) — see Sound
 tools/             sheet slicer + SpriteFrames generator (Python, run by hand)
                    check_bg_coverage.gd — parallax coverage guard (Godot, headed)
                    gen_background.py — builds the parallax layer PNGs
                    gen_fx.py — builds the dust/muzzle-flash sprites
+                   gen_sfx.gd — synthesises the placeholder sound effects
                    check_player_fx.gd — muzzle-flash gate + squash guard
+                   check_flask.gd — flask clamps, saloon rest, HUD row overlap
+                   check_sfx.gd — pool, impact dedupe, slide loop, footsteps
 scenes/player/     player.tscn, player_camera_2d.gd
 scenes/enemies/    gunslinger.tscn
+scenes/checkpoints/  saloon_checkpoint.tscn — rest point, respawn anchor
+scenes/pickups/    tequila_stash.tscn — one flask charge, left in the world
 scenes/projectiles/  bullet.gd is shared — bullet.tscn, pellet.tscn and
                      enemy_bullet.tscn differ only in numbers, colour and layers
 scenes/fx/         impact_puff.tscn, dust_puff.tscn, muzzle_flash.tscn
 scenes/levels/     test_level.tscn
 scenes/levels/backgrounds/  desert_bg.tscn — parallax layers, instanced per level
 scenes/ui/         main_menu.tscn, pause_menu.tscn, game_over_menu.tscn
-                   hud.tscn — health readout, owned by GameState
+                   hud.tscn — health + flask + weapon readout, owned by GameState
                    debug_overlay.tscn — autoloaded as DebugOverlay
 scripts/globals/   game_state.gd — autoloaded as GameState
+                   sfx.gd — autoloaded as Sfx, pooled one-shot sound effects
 scripts/weapons/   weapon.gd (Resource) + one .tres per weapon
 ```
 
@@ -309,7 +424,8 @@ inherits, so `get_tree().paused` freezes them.
 ## Health and the HUD
 
 The player has `max_health` (default 5) hit points and a row of pips for them in
-the **top-left** corner — `hud.tscn`, with the weapon slots directly underneath.
+the **top-left** corner — `hud.tscn`, with the [flask
+readout](#the-tequila-flask) under the pips and the weapon slots under that.
 Top-left because `DebugOverlay` owns the top-right. The pips are built at runtime from `max_health`, so raising it in the
 inspector widens the row without touching the HUD.
 
@@ -341,12 +457,158 @@ so the pause dim covers it rather than the other way round.
 
 Balance is untuned — 5 hit points and a 0.9s i-frame window are placeholders.
 
+## The tequila flask
+
+**`F` drinks. Refills only at a saloon.** The flask is the healing loop — there
+are no health pickups lying around, and there is not going to be a corridor you
+can walk back down to farm one. You carry `flask_charges_max` swigs (default 3),
+each worth `flask_heal_amount` pips (default 1), and what you have when you leave
+a saloon is what you have until you reach the next one.
+
+Three things about it are load-bearing:
+
+- **The charge is spent on the press; the health arrives `drink_heal_delay`
+  later** (0.45s into a 0.65s swig). Those being two separate events *is* the
+  feel of the thing: drinking a frame before a bullet lands costs you the swig
+  and doesn't save you, so reaching for the flask is a read of the fight rather
+  than a reflex. Collapse them together and the flask becomes a free button.
+- **Shooting is refused for the whole swig**, and a slide can't be launched out
+  of one. Crouching still can — ducking while committed to a drink is exactly
+  the play worth leaving open. Movement is deliberately untouched: gating it too
+  would have meant a state-machine rewrite for a 0.65s window.
+- **`flask_charges` is per-player mutable state, never a `Resource`.** Same rule
+  as `_fire_cooldown` — see [Weapons](#weapons). A `.tres` is one shared object,
+  so a flask on one would be everybody's flask.
+
+`flask_charges` is written only through `_set_flask_charges()`, which clamps to
+`0..flask_charges_max` and emits `flask_changed(current, total)` — the same
+contract `_set_health()` holds for the pip row, and the reason the HUD readout
+can't go stale. Dying cancels a swig in flight, or the pending heal would put a
+pip back on the bar behind the death screen.
+
+The readout sits under the health pips: one amber swatch per charge, lit or
+spent, and `TEQUILA 3 / 3` beside it. The swatch row is built from
+`flask_charges_max` at runtime exactly as the pips are built from `max_health`,
+so **nothing assumes there are three**. The HUD also re-checks the row length
+from `_process`, because raising the maximum isn't a change to the charges and
+so doesn't emit `flask_changed` — the same self-heal the weapon slot row has, for
+the same reason.
+
+### Collectibles
+
+`scenes/pickups/tequila_stash.tscn` is the one that exists: a bottle worth one
+charge, never past the maximum. The whole "is there room for it" decision lives
+in `Player.add_flask_charges()`, which returns whether it actually took any —
+that's what lets the bottle stay in the level when you walk past with a full
+flask instead of being consumed for nothing. Collection is retried every frame
+you overlap it, not only on `body_entered`, because that signal doesn't repeat
+for a body that never left.
+
+There is deliberately **no pickup base class yet**. `Agave Heart` (raise
+`flask_charges_max`), `Silver Flask Cap` (raise `flask_heal_amount`) and
+`Gold Nugget` are the same six lines with a different call in `_try_collect()`;
+with one implementation there is nothing to factor out, and guessing at the
+shared part now is how you get a base class that fits none of them.
+
+Not built: inventory, shops, currency, permanent upgrade menus.
+
+## Saloon checkpoints
+
+`scenes/checkpoints/saloon_checkpoint.tscn` is a bonfire in a hat. Walk up, get
+`Press R to rest`, and resting **refills your health, refills your flask, makes
+this saloon where you come back to, and reloads the level** — which puts the
+enemies back. That last clause is the bargain, and it's the Dark Souls one.
+
+One is placed in `test_level` at the ground line around x=2200, on the flat
+between the first gunslinger and `LedgeFar`: past the opening tunnel-and-ledge
+stretch and the first fight, which is where a breather belongs. Its
+`checkpoint_id` is `test_level_saloon`. **Ids must be unique per level** — the
+active one is stored by id, so two saloons sharing one would both light up.
+
+Four things there are load-bearing:
+
+- **The reload is a plain `GameState` level swap, not an enemy-reset manager.**
+  Nothing in a level holds progression state yet, so a reload *is* the reset and
+  costs no new code to keep correct. When something one-off lands — a boss, an
+  opened shortcut — `rest_at_checkpoint()` is the line that has to change.
+  `reload_on_rest` is exported so `tools/check_flask.gd` can drive a rest without
+  having the scene swapped out from under it mid-assertion.
+- **The checkpoint is recorded before the refill and before the reload.**
+  `Player._ready()` asks `GameState.get_respawn_position()` where to stand, so on
+  the reload the checkpoint has to already be the answer.
+- **The saloon carries no blocking collision at all** — it's an `Area2D` on the
+  pickups layer masked to the player, with `ColorRect`s for readability. A
+  `StaticBody2D` silhouette there would stall a run, and
+  `tools/check_player_fx.gd` measures run cadence across that stretch of ground.
+- **`Building` sits at `z_index = -1`.** Everything in a level is at z 0 and a
+  saloon is placed after the Player in the tree, so without it the facade draws
+  over you and walking to the door hides you behind the building. −1 is still
+  ahead of every parallax layer (sky −100 up to the play plane) and behind the
+  foreground dust at +40.
+
+Lit versus shuttered is the whole active/inactive read, applied to the same
+nodes so there is no second set of art to keep in sync: warm windows, a lit
+lantern, and a breathing pool of light spilling out of the doorway onto the
+dirt. A big soft halo *around* the building was the first attempt and it read as
+a rendering fault — a translucent rectangle with hard edges, in a scene made of
+hard-edged rectangles, has nothing to distinguish it from a bug. A pool on the
+ground has a physical reading, which is what survives into painted art.
+
+### Where the checkpoint lives, and what it costs
+
+`GameState` holds it — scene path, id, respawn position — rather than a
+competing singleton, for the same reason it owns every scene swap. Retry is
+therefore **unchanged**: it still reloads the level, and where you land inside it
+is decided by the checkpoint. **A level with no saloon in it retries from the top
+exactly as it did before**, and so does a level whose only checkpoint belongs to
+a different level.
+
+Two limitations, both deliberate for a first pass:
+
+- **Progress is session-only.** There is no disk save; quitting the executable
+  loses the checkpoint. `start_new_game()` clears it too, so Play from the menu
+  is always a fresh run.
+- **Level identity is `GameState._current_level`, not
+  `get_tree().current_scene`.** Every level change already goes through the
+  autoload, so that field is authoritative and needs no assumption about engine
+  ordering during a swap — and `current_scene` is null when a level is added to
+  the root by hand, which is exactly what the headless checks in `tools/` do. The
+  cost is that a *second* level launched directly with F6 would still report as
+  `FIRST_LEVEL_SCENE`. `set_checkpoint()` therefore also writes
+  `_current_level`, which keeps Retry honest for whichever level actually rested.
+
+### Checking it
+
+```
+Godot_v4.7.2-stable_win64.exe --path . --script res://tools/check_flask.gd
+```
+
+Drives the real player in the real level with faked input. Asserts the charge
+clamps hold at both ends, that a swig spends on the press and heals late, that
+it doesn't overheal, that firing is refused mid-swig, that resting refills both
+bars and records the checkpoint, and that Retry resolves to the checkpoint —
+**and falls back to the level spawn when there isn't one**, which is the case
+that must keep working for every level with no saloon. The last phase does a
+**real level reload** and asks where `Player._ready()` actually put the player,
+rather than trusting `get_respawn_position()` in isolation: everything upstream
+of that call can be right and still land you at the opening spawn. Non-zero exit
+on failure.
+
+It also asserts the flask row's rect doesn't intersect the health pips or the
+weapon slots. That one is a rect test rather than a count, because the HUD row
+positions are hand-placed numbers and a charge-count assertion cannot see a row
+land on top of another. Run headed and it saves `user://flask_hud.png` and
+`user://flask_saloon_unrested.png` — the before and after of the saloon's lit
+state, which is a judgement no assertion makes.
+
 ## Death and game over
 
 **Death is terminal.** `Player.die()` hands off to `GameState.game_over()`,
 which freezes the tree and puts up `game_over_menu.tscn` — Retry / Main Menu /
-Quit. Retry reloads the level from the top. The player no longer respawns in
-place; that quietly undid the death and made it easy to miss that you'd lost.
+Quit. Retry reloads the level; you come back at the last
+[saloon](#saloon-checkpoints) you rested at, or from the top if you haven't
+rested at one. The player no longer respawns in place; that quietly undid the
+death and made it easy to miss that you'd lost.
 
 Two ways in: health reaching zero, and falling out of the level.
 
@@ -358,8 +620,8 @@ un-pause your way out of, so `_unhandled_input` ignores `pause` in `GAME_OVER`.
 Falling used to be survivable-by-accident — nothing detected it, so you dropped
 for ever. The fix reuses the rect the level already has: the kill plane sits
 `fall_death_margin` (default 400px) below the bottom of the level's
-`CameraBounds`. In `test_level` that puts it at y=1580, 560px below where the
-player stands.
+`CameraBounds`. In `test_level` that puts it at y=1619, about 660px below where
+the player stands.
 
 This is deliberately **not** a `KillZone` node the level has to place. A
 forgotten kill zone reproduces exactly the bug this fixes. Deriving it from a
@@ -419,6 +681,7 @@ Who can hit whom is decided by layers, not by code. Set on the scene root:
 | 3 | enemies | Gunslinger |
 | 4 | player_bullets | `bullet.tscn`, `pellet.tscn` — mask hits world + enemies |
 | 5 | enemy_bullets | `enemy_bullet.tscn` — mask hits world + player |
+| 6 | pickups | `saloon_checkpoint.tscn`, `tequila_stash.tscn` — `Area2D`s that mask the player only, so nothing they contain can block a body |
 
 Because enemy bullets don't mask enemies, a gunslinger can't shoot its own kind.
 Anything with a `take_damage(amount, from_direction)` method takes hits.
@@ -628,7 +891,7 @@ Drift on the clouds and the dust is `autoscroll`: one property, no code.
 ## Where things stand
 
 Verified by a headless import + instantiation pass: the project imports with no
-errors, all eight input actions are registered, `test_level.tscn` instantiates,
+errors, all ten input actions are registered, `test_level.tscn` instantiates,
 and `player.gd` compiles and attaches. The weapon list survives the `.tscn` round
 trip (both weapons load with their numbers), one shotgun press spawns six pellets
 on six evenly-spaced symmetric trajectories, held fire doesn't repeat a
@@ -637,12 +900,22 @@ travel vector is numerically unchanged by the angle support added for spread. Th
 HUD weapon row was checked against a **rendered frame**, not just the node tree:
 the slots sit clear of the health pips, the lit slot follows the switch, and
 appending to `weapons` at runtime grows the row on the next frame. Every parallax
-layer covers the frame with at least 170px to spare at both ends of the level and
-up on the Perch, at 16:9 and 21:9, with look-ahead extended and shake at peak —
-re-checkable with `tools/check_bg_coverage.gd`. The pause lifecycle is covered by a
+layer covers the frame with at least **163px** to spare at both ends of the level
+and up on the Perch, at 16:9 and 21:9, with look-ahead extended and shake at peak
+— re-checkable with `tools/check_bg_coverage.gd`. (That was ~170px before the
+`CameraBounds` rect was nudged ~15px left in the editor; the rect's *width* is
+unchanged at 4040, so the budget formula still holds, but the slack on the left
+edge is now the number to watch.) The pause lifecycle is covered by a
 headless run too — pause freezes the player but not the menu, resume restores,
-and "Main Menu" from the pause screen leaves the tree unpaused. **Gameplay feel
-is still unplayed** — that needs a human on F5.
+and "Main Menu" from the pause screen leaves the tree unpaused. The flask and the
+saloon are covered by `tools/check_flask.gd`: the charge clamps hold at both
+ends, a swig spends on the press and heals late without overhealing, firing is
+refused mid-swig, resting refills both bars and records the checkpoint, Retry
+resolves to it and falls back to the level spawn when there is none — and the new
+flask row's rect clears both the health pips and the weapon slots, checked
+against a rendered frame as well as by intersection. **Gameplay feel is still
+unplayed** — that needs a human on F5, and the flask timings
+(`drink_duration` 0.65s, `drink_heal_delay` 0.45s) are a first guess.
 
 Note that `--headless --path . --quit` now boots the *menu*, since that's
 `main_scene`. To headlessly smoke-test the level, name it explicitly:
@@ -662,11 +935,32 @@ Godot_v4.7.2-stable_win64.exe --headless --path . res://scenes/levels/test_level
 - [x] Pause menu — Esc/Start toggle, resume / main menu / quit, Space-vs-jump collision resolved
 - [x] Game over — death by damage or by falling out of the level, retry / main menu / quit
 - [x] Health HUD — pip row top-left, survives scene swaps; values still unbalanced
+- [x] Tequila flask — `F` to drink, charge spent on the press and health late,
+      no firing mid-swig, HUD charge row built from the maximum; guarded by
+      `tools/check_flask.gd`
+- [x] Saloon checkpoints — rest to refill health + flask, record the respawn and
+      reload the level; death and Retry come back there. **Session-only, no disk
+      save.**
+- [x] Tequila Stash pickup — one charge, never past the maximum
+- [ ] Agave Heart / Silver Flask Cap / Gold Nugget — the shape is there
+      (`tequila_stash.gd`), the items aren't
+- [ ] A drinking pose — the sheet has none, so the swig is carried by a warm
+      tint and a puff and the player keeps whatever clip they were on
+- [ ] Saving checkpoints to disk
 - [x] Debug overlay — F3, frame timings + 1% low, render/memory/physics counters
 - [x] Player animation — sheet sliced to a 9-clip SpriteFrames, driven off the existing movement states
 - [x] Character effects — squash/stretch, recoil lean, dust on takeoff/land/run/
       slide/skid, muzzle smoke, and a code-drawn flash for the poses the sheet
       doesn't paint one for; guarded by `tools/check_player_fx.gd`
+- [x] Sound — footsteps off the run clip's contact frames, a slide scrape loop,
+      per-weapon gunfire and bullet impacts on anything that bleeds; pooled
+      through the `Sfx` autoload and guarded by `tools/check_sfx.gd`.
+      **Samples are generated placeholders** (`tools/gen_sfx.gd`), swappable for
+      real recordings with no code change
+- [ ] The rest of the sounds — jump, landing, weapon switch, drinking, taking
+      damage, enemy death, bullets on terrain. All one-liners now that the
+      autoload and the `AudioStream` slots exist
+- [ ] Music, an SFX bus and a volume slider in the options the game doesn't have
 - [ ] Player firing *poses* for run / jump / crouch-walk — the sheet has none, so
       shooting on the move still isn't acted out (the flash is now drawn, the
       pose isn't)

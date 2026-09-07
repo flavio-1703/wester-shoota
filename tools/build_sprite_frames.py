@@ -21,25 +21,38 @@ SHEET_RES = "res://assets/characters/player_frames.png"
 # GDScript; if you retune the player, retune these too.
 JUMP_TIME_TO_PEAK = 0.38
 SLIDE_DURATION = 0.45
+SHOOT_POSE_TIME = 0.25
 
 # (source row, first frame, count, loop, fps)
 #
-# `idle` is the standing pose at the head of the shoot row — the sheet has no
-# idle strip of its own. `crouch` runs crouch[1..6], skipping the upright first
-# frame and settling on the low kneel; it stops short of crouch[7] because that
-# one has the revolver drawn *and a muzzle flash painted into it*, so resting on
-# it would leave the player permanently firing while ducked. It is split out as
-# `crouch_shoot` instead.
+# The sheet's rows are already the clips — sheet 3 draws a strip per stance,
+# including the firing poses for running and jumping that sheet 2 was missing.
+# The only rows that get subdivided are done in the slicer, not here.
+#
+# `crouch` is the settled kneel, played once so it holds on the low pose;
+# `crouch_walk` is the shuffle and loops under it.
+#
+# `run_shoot` is authored at the same fps as `run` on purpose: player.gd
+# time-scales both to the speed the body is travelling, and the authored length
+# is the reference that scaling is measured against.
+#
+# `jump_shoot` is the one firing clip that plays ONCE. Its first frame is the
+# only one of the five with no flash painted in, so looping it strobes the flash
+# on and off every 0.42s for as long as fire is held in the air — a cadence with
+# no relation to the weapon's 0.18s fire_interval. Played once it settles on
+# frame 4, which is a flashing one, and re-arms whenever the clip changes.
 CLIPS = {
-    "idle":         ("shoot",  0, 1, True,  1.0),
-    "run":          ("run",    0, 9, True,  15.0),
-    "jump":         ("jump",   0, 4, False, 4 / JUMP_TIME_TO_PEAK),
-    "fall":         ("fall",   0, 2, True,  6.0),
-    "land":         ("land",   0, 2, False, 14.0),
-    "slide":        ("slide",  0, 5, False, 5 / SLIDE_DURATION),
-    "shoot":        ("shoot",  1, 6, True,  24.0),
-    "crouch":       ("crouch", 1, 6, False, 20.0),
-    "crouch_shoot": ("crouch", 7, 1, True,  1.0),
+    "idle":        ("idle",        0, 7, True,  6.0),   # guess: ~1.2s breath
+    "run":         ("run",         0, 8, True,  15.0),
+    "jump":        ("jump",        0, 5, False, 5 / JUMP_TIME_TO_PEAK),
+    "fall":        ("fall",        0, 2, True,  6.0),   # guess
+    "land":        ("land",        0, 2, False, 14.0),  # guess
+    "slide":       ("slide",       0, 5, False, 5 / SLIDE_DURATION),
+    "shoot":       ("shoot",       0, 6, True,  6 / SHOOT_POSE_TIME),
+    "crouch":      ("crouch",      0, 2, False, 12.0),  # guess
+    "crouch_walk": ("crouch_walk", 0, 9, True,  12.0),  # guess
+    "run_shoot":   ("run_shoot",   0, 8, True,  15.0),
+    "jump_shoot":  ("jump_shoot",  0, 5, False, 12.0),  # guess
 }
 
 
@@ -89,7 +102,7 @@ def main() -> None:
     for clip, (row_name, start, count, loop, fps) in CLIPS.items():
         span = f"{row_name}[{start}]" if count == 1 \
             else f"{row_name}[{start}..{start + count - 1}]"
-        print(f"  {clip:13s} {span:18s} {count} frames  {fps:5.1f}fps  "
+        print(f"  {clip:13s} {span:22s} {count} frames  {fps:5.1f}fps  "
               f"{count / fps:.2f}s  {'loop' if loop else 'once'}")
 
 

@@ -11,7 +11,9 @@ extends SceneTree
 ##      hand-maintained list mirroring what the artist has and hasn't drawn. Add
 ##      a `run_shoot` strip to the sheet without updating it and the shot flashes
 ##      twice; rename a clip and it stops flashing at all. Nothing else catches
-##      either.
+##      either. Sheet 3 did exactly that — it added run_shoot and jump_shoot and
+##      dropped the crouched firing pose — so the expectations below inverted:
+##      running and airborne fire is now painted, crouched fire is not.
 ##   2. The run does not skate: world travel per animation cycle matches the
 ##      distance the drawn feet carry the body (2 * run_stride).
 ##   3. Squash and stretch move the sprite and the MUZZLE DOES NOT. Bullets spawn
@@ -46,6 +48,18 @@ var _saw_flash := false
 var _clips: Dictionary = {}
 var _fails := 0
 
+## True from the moment a phase is reset until the player is standing on the
+## ground again.
+##
+## _next() teleports to a fixed point rather than to the floor's exact height,
+## so the player opens every phase in a short fall. That ruins the phases that
+## need a stance: a slide started in the air is cancelled by _update_stance on
+## the very next frame, and a jump is refused for want of coyote time. Holding
+## the phase clock at zero until the drop lands makes every phase start from the
+## same conditions whatever the level's ground is doing under x=1900.
+var _settling := true
+var _settle_time := 0.0
+
 
 func _initialize() -> void:
 	_level = load("res://scenes/levels/test_level.tscn").instantiate()
@@ -55,6 +69,20 @@ func _initialize() -> void:
 func _release_all() -> void:
 	for a in ACTIONS:
 		Input.action_release(a)
+
+
+## Screenshots are a debugging aid, not an assertion — and they need a real
+## renderer. Under `--headless` the viewport has no texture, and an unguarded
+## save_png() there throws *after* the verdict but *before* _next(), so the phase
+## never advances and the run hangs on it forever. Guarded, the checks themselves
+## run either way and only the pictures are lost.
+func _capture(name: String) -> void:
+	var texture := root.get_texture()
+	if texture == null:
+		return
+	var image := texture.get_image()
+	if image != null:
+		image.save_png("user://%s.png" % name)
 
 
 var _saved_flash := false
@@ -75,7 +103,7 @@ func _observe() -> void:
 			# so a capture at a fixed time usually misses it entirely.
 			if not _saved_flash:
 				_saved_flash = true
-				root.get_texture().get_image().save_png("user://fx_flash.png")
+				_capture("fx_flash")
 	var clip: StringName = _player._sprite.animation
 	_clips[clip] = true
 
@@ -98,14 +126,19 @@ func _verdict(label: String, want_flash: bool, want_clips: Array) -> void:
 ## to be this exact spot: without a reset the phases inherit each other's
 ## position and the player runs into the tunnel roof at x=750 (110px of
 ## clearance), stalling so velocity.x never reaches slide_min_speed and the
-## crouch tap becomes a plain crouch; and the jump apex (~y 770) has to clear
-## LedgeLow's underside at x 998..1334, y 727..775, or the squash phase measures
-## a bonk instead of a landing.
+## crouch tap becomes a plain crouch; and the jump apex has to clear LedgeLow's
+## underside at x 998..1334, or the squash phase measures a bonk instead of a
+## landing.
+##
+## It is deliberately NOT the floor's exact height. Levels get re-authored and
+## the ground under x=1900 has already moved once, which dropped the player 40px
+## into the air at the top of every phase — see `_settling`.
 func _next() -> void:
 	_phase += 1
 	_t = 0.0
 	_saw_flash = false
 	_clips = {}
+	_settling = true
 	_release_all()
 	if _player != null:
 		_player.global_position = Vector2(1900, 1020)
@@ -121,6 +154,23 @@ func _physics_process(delta: float) -> bool:
 		print("\n--- muzzle flash gate ---")
 		_release_all()
 
+	if _settling:
+		if _player.is_on_floor():
+			_settling = false
+			_settle_time = 0.0
+		else:
+			# No faked input while falling, and no clock either — the phase has
+			# not started yet.
+			_t = 0.0
+			_settle_time += delta
+			if _settle_time > 3.0:
+				print("  *** FAIL: player never landed after the phase reset."
+					+ " Is (1900, 1020) still over solid ground?")
+				_fails += 1
+				quit(1)
+				return true
+			return false
+
 	_t += delta
 
 	match _phase:
@@ -133,7 +183,8 @@ func _physics_process(delta: float) -> bool:
 			if _t > 0.50:
 				_verdict("standing", false, [&"shoot"])
 				_next()
-		# B: running and firing. Clip is `run`, no painted flash -> code flash.
+		# B: running and firing. Clip is `run_shoot`, which sheet 3 paints a
+		# flash into, so the code one must stay away.
 		1:
 			Input.action_press("move_right")
 			if _t > 0.35:
@@ -141,10 +192,10 @@ func _physics_process(delta: float) -> bool:
 			if _t > 0.50:
 				_observe()
 			if _t > 0.85:
-				_verdict("running", true, [&"run"])
-				root.get_texture().get_image().save_png("user://fx_run_shoot.png")
+				_verdict("running", false, [&"run_shoot"])
+				_capture("fx_run_shoot")
 				_next()
-		# C: airborne and firing. `jump`/`fall`, no painted flash -> code flash.
+		# C: airborne and firing. `jump_shoot`, also painted in sheet 3.
 		2:
 			Input.action_press("move_right")
 			if _t < 0.02:
@@ -156,7 +207,7 @@ func _physics_process(delta: float) -> bool:
 			if _t > 0.16:
 				_observe()
 			if _t > 0.34:
-				_verdict("airborne", true, [&"jump", &"fall"])
+				_verdict("airborne", false, [&"jump_shoot"])
 				_next()
 		# D: sliding and firing. The slide poses draw no gun at all, so the
 		# flash is deliberately suppressed there.
@@ -178,11 +229,28 @@ func _physics_process(delta: float) -> bool:
 				_observe()
 			if _t > 0.30:
 				_verdict("sliding", false, [&"slide"])
-				root.get_texture().get_image().save_png("user://fx_slide.png")
+				_capture("fx_slide")
 				_next()
-		# E: squash and stretch. A still frame cannot show these, so they are
-		# read off the sprite's actual scale as the player jumps and lands.
+		# E: crouched and firing. The one pose left that the art does NOT paint
+		# a flash into — sheet 3 dropped the crouched firing pose sheet 2 had —
+		# so this is the only stance the code-drawn flash still covers.
+		#
+		# From a standstill the crouch press cannot become a slide (velocity is
+		# nowhere near slide_min_speed), so unlike phase D this one can be driven
+		# through real input.
 		4:
+			Input.action_press("crouch")
+			if _t > 0.05:
+				Input.action_press("shoot")
+			if _t > 0.08:
+				_observe()
+			if _t > 0.30:
+				_verdict("crouching", true, [&"crouch", &"crouch_walk"])
+				_capture("fx_crouch_shoot")
+				_next()
+		# F: squash and stretch. A still frame cannot show these, so they are
+		# read off the sprite's actual scale as the player jumps and lands.
+		5:
 			if _t < 0.02:
 				Input.action_press("jump")
 			else:
@@ -208,7 +276,11 @@ func _physics_process(delta: float) -> bool:
 					print("  *** FAIL: airborne pose is not taller than it is wide")
 					_fails += 1
 				# The muzzle must not move with the squash: bullets spawn there,
-				# and MUZZLE_STAND is measured off the painted flashes.
+				# and the MUZZLE offsets are measured off the painted flashes.
+				# It IS placed per firing pose by _place_muzzle(), and standing
+				# still on the ground that pose is `shoot` — so MUZZLE_STAND is
+				# still the right expectation here, and anything else means the
+				# squash reached a node it should not have.
 				var muzzle_local: Vector2 = _player.get_node("Visuals/Muzzle").position
 				if muzzle_local != _player.MUZZLE_STAND:
 					print("  *** FAIL: muzzle moved to %s, expected %s" % [
@@ -217,11 +289,11 @@ func _physics_process(delta: float) -> bool:
 				else:
 					print("  muzzle    %s unmoved by the squash" % str(muzzle_local))
 				_next()
-		# F: does the run skate? Count animation-frame advances against world
+		# G: does the run skate? Count animation-frame advances against world
 		# travel. The clip is a full cycle of two steps, so one cycle should
 		# carry the body 2 * run_stride. `run_stride` is measured off the sheet
 		# by hand, so new run art silently desyncs it — this is what catches that.
-		5:
+		6:
 			# Shielded from enemy fire: a knockback mid-window would corrupt the
 			# travel measurement. The i-frame blink is irrelevant here, nothing
 			# is captured in this phase.
@@ -260,7 +332,7 @@ func _physics_process(delta: float) -> bool:
 				else:
 					print("  feet stay planted")
 				_next()
-		6:
+		7:
 			_release_all()
 			if _fails == 0:
 				print("\nALL FX CHECKS OK")

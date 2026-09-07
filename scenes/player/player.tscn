@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scenes/player/player.gd" id="1_player"]
 [ext_resource type="Resource" path="res://scripts/weapons/revolver.tres" id="2_revolver"]
@@ -7,6 +7,9 @@
 [ext_resource type="SpriteFrames" path="res://scenes/player/player_frames.tres" id="5_frames"]
 [ext_resource type="PackedScene" path="res://scenes/fx/dust_puff.tscn" id="6_dust"]
 [ext_resource type="PackedScene" path="res://scenes/fx/muzzle_flash.tscn" id="7_flash"]
+[ext_resource type="AudioStream" path="res://assets/audio/footstep_dirt_a.tres" id="8_step_a"]
+[ext_resource type="AudioStream" path="res://assets/audio/footstep_dirt_b.tres" id="9_step_b"]
+[ext_resource type="AudioStream" path="res://assets/audio/slide_dirt_loop.tres" id="10_slide"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_stand"]
 size = Vector2(56, 170)
@@ -24,18 +27,18 @@ script = ExtResource("1_player")
 weapons = Array[Weapon]([ExtResource("2_revolver"), ExtResource("4_shotgun")])
 dust_scene = ExtResource("6_dust")
 muzzle_flash_scene = ExtResource("7_flash")
+footstep_sounds = Array[AudioStream]([ExtResource("8_step_a"), ExtResource("9_step_b")])
 
 [node name="Visuals" type="Node2D" parent="."]
 
 [node name="Sprite" type="AnimatedSprite2D" parent="Visuals"]
-scale = Vector2(0.9, 0.9)
 sprite_frames = ExtResource("5_frames")
 animation = &"idle"
 centered = false
 offset = Vector2(-144, -208)
 
 [node name="Muzzle" type="Marker2D" parent="Visuals"]
-position = Vector2(62, -130)
+position = Vector2(72, -136)
 
 [node name="StandShape" type="CollisionShape2D" parent="."]
 position = Vector2(0, -85)
@@ -51,6 +54,11 @@ position = Vector2(0, -87)
 shape = SubResource("RectangleShape2D_ceiling")
 target_position = Vector2(0, 0)
 collision_mask = 1
+
+[node name="SlideSfx" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("10_slide")
+volume_db = -10.0
+max_distance = 2400.0
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(0, -110)

@@ -1,0 +1,48 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scenes/pickups/tequila_stash.gd" id="1_stash"]
+[ext_resource type="PackedScene" path="res://scenes/fx/dust_puff.tscn" id="2_dust"]
+
+[sub_resource type="RectangleShape2D" id="Rect_pickup"]
+size = Vector2(84, 110)
+
+; Origin on the ground, like the saloon and the player, so a bottle is placed by
+; dropping it on a ledge.
+[node name="TequilaStash" type="Area2D"]
+collision_layer = 32
+collision_mask = 2
+script = ExtResource("1_stash")
+pickup_puff_scene = ExtResource("2_dust")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -55)
+shape = SubResource("Rect_pickup")
+
+; Bobbed by the script, which caches this node's authored y as its rest height —
+; so moving the bottle in the editor moves the whole bob with it.
+[node name="Bottle" type="Node2D" parent="."]
+position = Vector2(0, -34)
+
+[node name="Body" type="ColorRect" parent="Bottle"]
+offset_left = -18.0
+offset_top = -34.0
+offset_right = 18.0
+offset_bottom = 34.0
+mouse_filter = 2
+color = Color(0.93, 0.71, 0.26, 1)
+
+[node name="Neck" type="ColorRect" parent="Bottle"]
+offset_left = -7.0
+offset_top = -58.0
+offset_right = 7.0
+offset_bottom = -34.0
+mouse_filter = 2
+color = Color(0.55, 0.4, 0.16, 1)
+
+[node name="Cork" type="ColorRect" parent="Bottle"]
+offset_left = -10.0
+offset_top = -68.0
+offset_right = 10.0
+offset_bottom = -58.0
+mouse_filter = 2
+color = Color(0.3, 0.21, 0.14, 1)
