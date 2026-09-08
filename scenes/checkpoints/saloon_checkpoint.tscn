@@ -1,133 +1,58 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://bwweu7phneclu"]
 
-[ext_resource type="Script" path="res://scenes/checkpoints/saloon_checkpoint.gd" id="1_saloon"]
+[ext_resource type="Script" uid="uid://bymb2gyoh33xo" path="res://scenes/checkpoints/saloon_checkpoint.gd" id="1_saloon"]
+[ext_resource type="Texture2D" uid="uid://dr1a2j7k6nu3j" path="res://assets/saloon_16bit.png" id="2_4tbwk"]
 
 [sub_resource type="RectangleShape2D" id="Rect_interact"]
-size = Vector2(440, 300)
+size = Vector2(480, 414)
 
-; The origin sits on the ground at the middle of the doorway, so a saloon is
-; placed by dropping it on a ground line — same convention as the Player, whose
-; origin is at its feet. Everything below is a placeholder rectangle in the
-; spirit of the rest of the level; the warm-vs-shuttered read is what has to
-; survive into the hand-painted art, not these colours.
-[node name="SaloonCheckpoint" type="Area2D"]
+[node name="SaloonCheckpoint" type="Area2D" unique_id=358505479]
 collision_layer = 32
 collision_mask = 2
 script = ExtResource("1_saloon")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-position = Vector2(0, -150)
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1322550161]
+position = Vector2(8, -209)
 shape = SubResource("Rect_interact")
 
-; Behind the play plane. Without this the building draws over the player — a
-; saloon is placed after the Player in the level's tree, and everything in the
-; level sits at z 0 — so walking up to the door hides you behind the facade. -1
-; is still ahead of every parallax layer (sky -100 up to the play plane) and
-; behind the foreground dust overlay at +40. The Prompt is a sibling at 0 on
-; purpose, so it reads over the roof rather than under it.
-[node name="Building" type="Node2D" parent="."]
+[node name="Building" type="Node2D" parent="." unique_id=204063789]
 z_index = -1
 
-[node name="Porch" type="ColorRect" parent="Building"]
-offset_left = -250.0
-offset_top = -24.0
-offset_right = 250.0
-offset_bottom = 0.0
-mouse_filter = 2
-color = Color(0.36, 0.25, 0.16, 1)
+[node name="Saloon16Bit" type="Sprite2D" parent="Building" unique_id=1735027688]
+position = Vector2(0, -238)
+texture = ExtResource("2_4tbwk")
 
-[node name="Facade" type="ColorRect" parent="Building"]
-offset_left = -220.0
-offset_top = -310.0
-offset_right = 220.0
-offset_bottom = -12.0
-mouse_filter = 2
-color = Color(0.45, 0.31, 0.2, 1)
-
-[node name="Roof" type="ColorRect" parent="Building"]
-offset_left = -262.0
-offset_top = -368.0
-offset_right = 262.0
-offset_bottom = -310.0
-mouse_filter = 2
-color = Color(0.3, 0.21, 0.14, 1)
-
-[node name="Sign" type="ColorRect" parent="Building"]
-offset_left = -160.0
-offset_top = -300.0
-offset_right = 160.0
-offset_bottom = -238.0
-mouse_filter = 2
-color = Color(0.16, 0.11, 0.08, 1)
-
-[node name="SignText" type="Label" parent="Building/Sign"]
-anchors_preset = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.95, 0.83, 0.6, 1)
-theme_override_font_sizes/font_size = 40
-text = "SALOON"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="WindowLeft" type="ColorRect" parent="Building"]
-offset_left = -180.0
-offset_top = -212.0
-offset_right = -96.0
-offset_bottom = -134.0
+[node name="WindowLeft" type="ColorRect" parent="Building" unique_id=148432775]
+offset_left = 115.0
+offset_top = -238.0
+offset_right = 196.0
+offset_bottom = -166.0
 mouse_filter = 2
 color = Color(0.36, 0.3, 0.26, 1)
 
-[node name="WindowRight" type="ColorRect" parent="Building"]
-offset_left = 96.0
-offset_top = -212.0
-offset_right = 180.0
-offset_bottom = -134.0
+[node name="WindowRight" type="ColorRect" parent="Building" unique_id=1328954497]
+offset_left = -205.0
+offset_top = -238.0
+offset_right = -131.0
+offset_bottom = -166.0
 mouse_filter = 2
 color = Color(0.36, 0.3, 0.26, 1)
 
-[node name="Doorway" type="ColorRect" parent="Building"]
-offset_left = -58.0
-offset_top = -214.0
-offset_right = 58.0
-offset_bottom = -12.0
-mouse_filter = 2
-color = Color(0.36, 0.3, 0.26, 1)
-
-[node name="Lantern" type="ColorRect" parent="Building"]
-offset_left = 196.0
-offset_top = -274.0
-offset_right = 228.0
-offset_bottom = -232.0
-mouse_filter = 2
-color = Color(0.36, 0.3, 0.26, 1)
-
-; Light spilling out of the doorway onto the dirt — the only node that animates,
-; and the last child so it lies over the porch rather than under it. A big soft
-; halo AROUND the building was the first attempt and it read as a rendering
-; fault: a translucent rectangle with hard edges over a scene of hard-edged
-; rectangles has nothing to distinguish it from a bug. A pool on the ground has a
-; physical reading, which is what survives into painted art.
-[node name="Glow" type="ColorRect" parent="Building"]
+[node name="Glow" type="ColorRect" parent="Building" unique_id=1114466484]
 offset_left = -150.0
-offset_top = -30.0
+offset_top = -32.0
 offset_right = 150.0
-offset_bottom = 24.0
+offset_bottom = 22.0
 mouse_filter = 2
 color = Color(1, 0.78, 0.35, 1)
 
-; Where the player stands on a respawn. A marker rather than the saloon's own
-; origin so the two can be moved apart if the art ever wants the door off-centre.
-[node name="SpawnPoint" type="Marker2D" parent="."]
+[node name="SpawnPoint" type="Marker2D" parent="." unique_id=817657742]
 
-[node name="Prompt" type="Label" parent="."]
-anchors_preset = 0
+[node name="Prompt" type="Label" parent="." unique_id=1764225825]
 offset_left = -260.0
 offset_top = -452.0
 offset_right = 260.0
 offset_bottom = -402.0
-mouse_filter = 2
 theme_override_colors/font_color = Color(1, 0.94, 0.78, 1)
 theme_override_colors/font_outline_color = Color(0.04, 0.03, 0.05, 0.9)
 theme_override_constants/outline_size = 8

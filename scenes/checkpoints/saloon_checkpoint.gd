@@ -11,9 +11,9 @@ extends Area2D
 ## and costs no new code to keep correct. When something one-off does land — a
 ## boss, an opened shortcut — this is the line that has to change.
 ##
-## It carries no blocking collision at all. The building is ColorRects for
-## readability; the only physics here is this Area2D, on the pickups layer and
-## masked to the player, so nothing about it can stall a run.
+## It carries no blocking collision at all; the only physics here is this
+## Area2D, on the pickups layer and masked to the player, so nothing about it
+## can stall a run.
 ##
 ## Interaction is polled from `_physics_process` rather than handled from
 ## `_input`, matching the player: everything in this game reads input on the
@@ -37,19 +37,17 @@ signal rested
 @export var reload_on_rest: bool = true
 
 @export_group("Presentation")
-## Windows and lantern lit vs. shuttered. The whole active/inactive read is
-## carried by these two, applied to the same nodes, so there is no second set of
-## art to keep in sync.
+## Windows lit vs. shuttered.
 @export var lit_color: Color = Color(1.0, 0.78, 0.35)
 @export var unlit_color: Color = Color(0.36, 0.3, 0.26)
-## Multiplied over the whole building. An unrested saloon sits in shadow.
+## Multiplied over the whole building sprite. An unrested saloon sits in shadow.
 @export var lit_tint: Color = Color(1.0, 0.96, 0.88)
 @export var unlit_tint: Color = Color(0.72, 0.68, 0.66)
-## Seconds per breath of the lantern glow. Motion is what makes the lit state
-## read at a glance on a still frame full of static rectangles.
+## Seconds per breath of the doorway glow. Motion is what makes the lit state
+## read at a glance on an otherwise still frame.
 @export var glow_period: float = 2.2
 @export var glow_amount: float = 0.26
-## Opacity of the light pool with the lantern at its dimmest.
+## Opacity of the light pool at its dimmest.
 @export var glow_floor: float = 0.24
 
 ## True while the player's body overlaps the interaction area. The prompt follows
@@ -64,10 +62,7 @@ var _glow_t: float = 0.0
 @onready var _prompt: Label = $Prompt
 @onready var _spawn_point: Marker2D = $SpawnPoint
 @onready var _building: Node2D = $Building
-@onready var _windows: Array[Node] = [
-	$Building/WindowLeft, $Building/WindowRight, $Building/Doorway
-]
-@onready var _lantern: ColorRect = $Building/Lantern
+@onready var _windows: Array[Node] = [$Building/WindowLeft, $Building/WindowRight]
 @onready var _glow: ColorRect = $Building/Glow
 
 
@@ -132,7 +127,6 @@ func _on_body_exited(body: Node2D) -> void:
 func _set_active(value: bool) -> void:
 	_active = value
 	_building.modulate = lit_tint if _active else unlit_tint
-	_lantern.color = lit_color if _active else unlit_color
 	for window in _windows:
 		(window as ColorRect).color = lit_color if _active else unlit_color
 	_glow.color = lit_color

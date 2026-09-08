@@ -1,9 +1,12 @@
 [gd_scene format=3 uid="uid://myvv3iispsx0"]
 
-[ext_resource type="Texture2D" uid="uid://bmmno5perp11c" path="res://assets/backgrounds/paralax_sky_upscaled.jpg" id="1_acl7j"]
-[ext_resource type="Texture2D" uid="uid://dtd1lpmblibs" path="res://assets/backgrounds/paralax_clouds-Photoroom.png" id="2_acl7j"]
-[ext_resource type="Texture2D" uid="uid://bkn861titapvi" path="res://assets/backgrounds/mountains.png" id="3_acl7j"]
-[ext_resource type="Texture2D" uid="uid://c3g2xi065dbed" path="res://assets/backgrounds/Generated Image September 07, 2026 - 1_24AM-Photoroom.png" id="7_acl7j"]
+[sub_resource type="Gradient" id="Gradient_ndurj"]
+colors = PackedColorArray(0.47058824, 0.8666667, 0.98039216, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_4om4g"]
+gradient = SubResource("Gradient_ndurj")
+fill_from = Vector2(0.5, 0)
+fill_to = Vector2(0.5, 1)
 
 [node name="DesertBackground" type="Node2D" unique_id=979501699]
 
@@ -11,9 +14,15 @@
 z_index = -100
 scroll_scale = Vector2(0, 0.1)
 
-[node name="ParalaxSkyUpscaled" type="Sprite2D" parent="Sky" unique_id=606596449]
-position = Vector2(1045, 323)
-texture = ExtResource("1_acl7j")
+[node name="TextureRect" type="TextureRect" parent="Sky" unique_id=1990510961]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 1921.0
+offset_bottom = 1081.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = SubResource("GradientTexture2D_4om4g")
 
 [node name="Clouds" type="Parallax2D" parent="." unique_id=1978801802]
 z_index = -95
@@ -22,19 +31,11 @@ repeat_size = Vector2(1800, 0)
 autoscroll = Vector2(6, 0)
 repeat_times = 3
 
-[node name="ParalaxCloudsPhotoroom" type="Sprite2D" parent="Clouds" unique_id=797166975]
-position = Vector2(2058, 520)
-texture = ExtResource("2_acl7j")
-
 [node name="FarRidge" type="Parallax2D" parent="." unique_id=945872079]
 z_index = -80
 scroll_scale = Vector2(0.15, 0.15)
 repeat_size = Vector2(2200, 0)
 repeat_times = 3
-
-[node name="Mountains" type="Sprite2D" parent="FarRidge" unique_id=1141590031]
-position = Vector2(415, 724)
-texture = ExtResource("3_acl7j")
 
 [node name="Mesas" type="Parallax2D" parent="." unique_id=523827274]
 z_index = -70
@@ -45,10 +46,6 @@ repeat_times = 3
 [node name="Buttes" type="Parallax2D" parent="." unique_id=252193934]
 z_index = -60
 scroll_scale = Vector2(0.55, 0.55)
-
-[node name="GeneratedImageSeptember07,2026124amPhotoroom" type="Sprite2D" parent="Buttes" unique_id=1592094398]
-position = Vector2(377, 849)
-texture = ExtResource("7_acl7j")
 
 [node name="NearRocks" type="Parallax2D" parent="." unique_id=1344800097]
 z_index = -50

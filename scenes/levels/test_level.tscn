@@ -136,7 +136,7 @@ color = Color(0.72, 0.54, 0.34, 1)
 shape = SubResource("Rect_ledge_wide")
 
 [node name="Player" parent="." unique_id=1433164598 instance=ExtResource("1_player")]
-position = Vector2(186, 933)
+position = Vector2(187, 933)
 
 [node name="Gunslinger" parent="." unique_id=2033965727 instance=ExtResource("2_gunslinger")]
 position = Vector2(1600, 925)
@@ -151,7 +151,7 @@ position = Vector2(3538, 953)
 position = Vector2(3620, 340)
 
 [node name="Saloon" parent="." unique_id=1090553301 instance=ExtResource("4_saloon")]
-position = Vector2(2202, 1011)
+position = Vector2(2202, 1055)
 checkpoint_id = &"test_level_saloon"
 
 [node name="TequilaStash" parent="." unique_id=1090553302 instance=ExtResource("5_stash")]

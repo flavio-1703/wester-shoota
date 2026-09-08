@@ -1,0 +1,453 @@
+[gd_scene format=3 uid="uid://dqf7h2m5n8xy0"]
+
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="1_player"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/gunslinger.tscn" id="2_gunslinger"]
+[ext_resource type="PackedScene" uid="uid://c8k2n5vqxr4wd" path="res://scenes/levels/backgrounds/forest_bg.tscn" id="3_bg"]
+[ext_resource type="Texture2D" uid="uid://ci0necgb64tfo" path="res://assets/Tiles.png" id="4_tiles"]
+[ext_resource type="Texture2D" uid="uid://bsotjgbwhxl05" path="res://assets/Props-Rocks.png" id="5_rocks"]
+[ext_resource type="Texture2D" uid="uid://ctgxdaydpfkav" path="res://assets/Buildings.png" id="6_buildings"]
+[ext_resource type="Texture2D" uid="uid://et0dirdy6dv5" path="res://Trees/Green-Tree.png" id="7_green"]
+[ext_resource type="Texture2D" uid="uid://bntqo2ot58xh6" path="res://Trees/Yellow-Tree.png" id="8_yellow"]
+[ext_resource type="Texture2D" uid="uid://bi3lqn8i7y6bi" path="res://Trees/Red-Tree.png" id="9_red"]
+[ext_resource type="Texture2D" uid="uid://2b35rgmycw7y" path="res://Trees/Golden-Tree.png" id="10_golden"]
+[ext_resource type="Texture2D" uid="uid://drcekoe5b3jaf" path="res://Trees/Dark-Tree.png" id="11_dark"]
+[ext_resource type="PackedScene" uid="uid://bwweu7phneclu" path="res://scenes/checkpoints/saloon_checkpoint.tscn" id="12_r5hy4"]
+
+[sub_resource type="AtlasTexture" id="Atlas_grasscap"]
+atlas = ExtResource("4_tiles")
+region = Rect2(0, 0, 94, 34)
+
+[sub_resource type="RectangleShape2D" id="Rect_ground"]
+size = Vector2(3840, 120)
+
+[sub_resource type="RectangleShape2D" id="Rect_branch"]
+size = Vector2(400, 80)
+
+[sub_resource type="AtlasTexture" id="Atlas_tree_green"]
+atlas = ExtResource("7_green")
+region = Rect2(0, 0, 107, 368)
+
+[sub_resource type="AtlasTexture" id="Atlas_tree_dark"]
+atlas = ExtResource("11_dark")
+region = Rect2(0, 0, 107, 368)
+
+[sub_resource type="AtlasTexture" id="Atlas_tree_yellow"]
+atlas = ExtResource("8_yellow")
+region = Rect2(0, 0, 107, 368)
+
+[sub_resource type="AtlasTexture" id="Atlas_tree_golden"]
+atlas = ExtResource("10_golden")
+region = Rect2(0, 0, 107, 368)
+
+[sub_resource type="AtlasTexture" id="Atlas_tree_red"]
+atlas = ExtResource("9_red")
+region = Rect2(0, 0, 107, 368)
+
+[sub_resource type="AtlasTexture" id="Atlas_bush1"]
+atlas = ExtResource("4_tiles")
+region = Rect2(274, 5, 124, 43)
+
+[sub_resource type="AtlasTexture" id="Atlas_bush2"]
+atlas = ExtResource("4_tiles")
+region = Rect2(274, 53, 124, 43)
+
+[sub_resource type="AtlasTexture" id="Atlas_bush3"]
+atlas = ExtResource("4_tiles")
+region = Rect2(274, 101, 124, 43)
+
+[sub_resource type="AtlasTexture" id="Atlas_bush4"]
+atlas = ExtResource("4_tiles")
+region = Rect2(274, 149, 124, 43)
+
+[sub_resource type="AtlasTexture" id="Atlas_bush5"]
+atlas = ExtResource("4_tiles")
+region = Rect2(274, 197, 124, 75)
+
+[sub_resource type="AtlasTexture" id="Atlas_rock_a"]
+atlas = ExtResource("5_rocks")
+region = Rect2(6, 2, 55, 78)
+
+[sub_resource type="AtlasTexture" id="Atlas_rock_b"]
+atlas = ExtResource("5_rocks")
+region = Rect2(64, 3, 63, 77)
+
+[sub_resource type="AtlasTexture" id="Atlas_rock_mossy"]
+atlas = ExtResource("5_rocks")
+region = Rect2(6, 82, 55, 78)
+
+[sub_resource type="AtlasTexture" id="Atlas_mushroom"]
+atlas = ExtResource("4_tiles")
+region = Rect2(257, 247, 30, 57)
+
+[sub_resource type="AtlasTexture" id="Atlas_flower"]
+atlas = ExtResource("4_tiles")
+region = Rect2(289, 277, 30, 27)
+
+[sub_resource type="AtlasTexture" id="Atlas_logpile"]
+atlas = ExtResource("6_buildings")
+region = Rect2(272, 208, 128, 160)
+
+[sub_resource type="AtlasTexture" id="Atlas_trunkhive"]
+atlas = ExtResource("4_tiles")
+region = Rect2(192, 0, 48, 64)
+
+[sub_resource type="AtlasTexture" id="Atlas_water"]
+atlas = ExtResource("4_tiles")
+region = Rect2(0, 278, 95, 90)
+
+[sub_resource type="RectangleShape2D" id="Rect_ledge_wide"]
+size = Vector2(336, 48)
+
+[sub_resource type="RectangleShape2D" id="Rect_ledge_narrow"]
+size = Vector2(192, 48)
+
+[sub_resource type="AtlasTexture" id="Atlas_chest"]
+atlas = ExtResource("4_tiles")
+region = Rect2(321, 275, 79, 61)
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_r5hy4"]
+texture = ExtResource("4_tiles")
+11:15/0 = 0
+12:15/0 = 0
+13:15/0 = 0
+
+[sub_resource type="TileSet" id="TileSet_1gj6p"]
+sources/0 = SubResource("TileSetAtlasSource_r5hy4")
+
+[node name="ForestLevel" type="Node2D" unique_id=-308155780]
+
+[node name="Background" parent="." unique_id=955885282 instance=ExtResource("3_bg")]
+
+[node name="CameraBounds" type="ReferenceRect" parent="." unique_id=-383315047 groups=["camera_bounds"]]
+offset_left = -267.0
+offset_top = -348.0
+offset_right = 3773.0
+offset_bottom = 1132.0
+border_color = Color(0.3, 0.9, 0.4, 1)
+
+[node name="Ground" type="StaticBody2D" parent="." unique_id=812196229]
+position = Vector2(1920, 1033)
+
+[node name="GrassCap" type="TextureRect" parent="Ground" unique_id=1764253554]
+texture_filter = 1
+offset_left = -2184.0
+offset_top = -91.0
+offset_right = -264.0
+offset_bottom = -57.0
+scale = Vector2(2, 2)
+texture = SubResource("Atlas_grasscap")
+stretch_mode = 1
+
+[node name="Fill" type="ColorRect" parent="Ground" unique_id=893571093]
+offset_left = -2184.0
+offset_top = -23.0
+offset_right = 1656.0
+offset_bottom = 97.0
+color = Color(0.259, 0.196, 0.129, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Ground" unique_id=-859710488]
+position = Vector2(-264, 37)
+shape = SubResource("Rect_ground")
+
+[node name="LowBranch" type="StaticBody2D" parent="." unique_id=-1169610956]
+position = Vector2(750, 823)
+
+[node name="Fill" type="ColorRect" parent="LowBranch" unique_id=-1670212537]
+offset_left = -200.0
+offset_top = -40.0
+offset_right = 200.0
+offset_bottom = 40.0
+color = Color(0.196, 0.145, 0.086, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LowBranch" unique_id=-356501114]
+shape = SubResource("Rect_branch")
+
+[node name="Tree1" type="Sprite2D" parent="." unique_id=1063188877]
+texture_filter = 1
+position = Vector2(-150, 734)
+scale = Vector2(1.5, 1.5)
+texture = SubResource("Atlas_tree_green")
+
+[node name="Tree2" type="Sprite2D" parent="." unique_id=1887191891]
+texture_filter = 1
+position = Vector2(420, 771)
+scale = Vector2(1.3, 1.3)
+texture = SubResource("Atlas_tree_dark")
+
+[node name="Tree3" type="Sprite2D" parent="." unique_id=1105288970]
+texture_filter = 1
+position = Vector2(1050, 752)
+scale = Vector2(1.4, 1.4)
+texture = SubResource("Atlas_tree_yellow")
+
+[node name="Tree4" type="Sprite2D" parent="." unique_id=-627280152]
+texture_filter = 1
+position = Vector2(1950, 716)
+scale = Vector2(1.6, 1.6)
+texture = SubResource("Atlas_tree_golden")
+
+[node name="Tree5" type="Sprite2D" parent="." unique_id=-733188654]
+texture_filter = 1
+position = Vector2(2450, 771)
+scale = Vector2(1.3, 1.3)
+texture = SubResource("Atlas_tree_red")
+
+[node name="Tree6" type="Sprite2D" parent="." unique_id=-2114442783]
+texture_filter = 1
+position = Vector2(3150, 734)
+scale = Vector2(1.5, 1.5)
+texture = SubResource("Atlas_tree_green")
+
+[node name="Tree7" type="Sprite2D" parent="." unique_id=536543305]
+texture_filter = 1
+position = Vector2(3700, 752)
+scale = Vector2(1.4, 1.4)
+texture = SubResource("Atlas_tree_dark")
+
+[node name="Bush1" type="Sprite2D" parent="." unique_id=-65304650]
+texture_filter = 1
+position = Vector2(250, 967)
+scale = Vector2(2, 2)
+texture = SubResource("Atlas_bush1")
+
+[node name="Bush2" type="Sprite2D" parent="." unique_id=1003129157]
+texture_filter = 1
+position = Vector2(800, 967)
+scale = Vector2(2, 2)
+texture = SubResource("Atlas_bush2")
+
+[node name="Bush3" type="Sprite2D" parent="." unique_id=-257533382]
+texture_filter = 1
+position = Vector2(1500, 967)
+scale = Vector2(2, 2)
+texture = SubResource("Atlas_bush3")
+
+[node name="Bush4" type="Sprite2D" parent="." unique_id=709726974]
+texture_filter = 1
+position = Vector2(2200, 967)
+scale = Vector2(2, 2)
+texture = SubResource("Atlas_bush4")
+
+[node name="Bush5" type="Sprite2D" parent="." unique_id=1507507561]
+texture_filter = 1
+position = Vector2(2900, 935)
+scale = Vector2(2, 2)
+texture = SubResource("Atlas_bush5")
+
+[node name="Bush6" type="Sprite2D" parent="." unique_id=-414065614]
+texture_filter = 1
+position = Vector2(3400, 967)
+scale = Vector2(2, 2)
+texture = SubResource("Atlas_bush2")
+
+[node name="Rock1" type="Sprite2D" parent="." unique_id=-2058994723]
+texture_filter = 1
+position = Vector2(600, 940)
+scale = Vector2(1.8, 1.8)
+texture = SubResource("Atlas_rock_a")
+
+[node name="Rock2" type="Sprite2D" parent="." unique_id=-845350728]
+texture_filter = 1
+position = Vector2(1700, 941)
+scale = Vector2(1.8, 1.8)
+texture = SubResource("Atlas_rock_b")
+
+[node name="Rock3" type="Sprite2D" parent="." unique_id=-449592574]
+texture_filter = 1
+position = Vector2(3000, 940)
+scale = Vector2(1.8, 1.8)
+texture = SubResource("Atlas_rock_mossy")
+
+[node name="Mushroom" type="Sprite2D" parent="." unique_id=-824285441]
+texture_filter = 1
+position = Vector2(350, 953)
+scale = Vector2(2, 2)
+texture = SubResource("Atlas_mushroom")
+
+[node name="Flower" type="Sprite2D" parent="." unique_id=1231813599]
+texture_filter = 1
+position = Vector2(400, 983)
+scale = Vector2(2, 2)
+texture = SubResource("Atlas_flower")
+
+[node name="Logpile" type="Sprite2D" parent="." unique_id=-1855374447]
+texture_filter = 1
+position = Vector2(1200, 882)
+scale = Vector2(1.6, 1.6)
+texture = SubResource("Atlas_logpile")
+
+[node name="TrunkHive" type="Sprite2D" parent="." unique_id=1602224258]
+texture_filter = 1
+position = Vector2(680, 946)
+scale = Vector2(2, 2)
+texture = SubResource("Atlas_trunkhive")
+
+[node name="Water" type="Sprite2D" parent="." unique_id=62191200]
+texture_filter = 1
+position = Vector2(2150, 920)
+scale = Vector2(2, 2)
+texture = SubResource("Atlas_water")
+
+[node name="LedgeLow" type="StaticBody2D" parent="." unique_id=1025379765]
+position = Vector2(900, 837)
+
+[node name="Cap" type="TextureRect" parent="LedgeLow" unique_id=1598042448]
+texture_filter = 1
+offset_left = 100.0
+offset_top = -225.0
+offset_right = 268.0
+offset_bottom = -191.0
+scale = Vector2(2, 2)
+texture = SubResource("Atlas_grasscap")
+stretch_mode = 1
+
+[node name="Fill" type="ColorRect" parent="LedgeLow" unique_id=-856448875]
+offset_left = 100.0
+offset_top = -157.0
+offset_right = 436.0
+offset_bottom = -109.0
+color = Color(0.259, 0.196, 0.129, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LedgeLow" unique_id=-1256118968]
+position = Vector2(268, -133)
+shape = SubResource("Rect_ledge_wide")
+
+[node name="LedgeHigh" type="StaticBody2D" parent="." unique_id=-670349740]
+position = Vector2(1560, 637)
+
+[node name="Cap" type="TextureRect" parent="LedgeHigh" unique_id=-179124738]
+texture_filter = 1
+offset_left = -96.0
+offset_top = -92.0
+offset_bottom = -58.0
+scale = Vector2(2, 2)
+texture = SubResource("Atlas_grasscap")
+stretch_mode = 1
+
+[node name="Fill" type="ColorRect" parent="LedgeHigh" unique_id=-711458073]
+offset_left = -96.0
+offset_top = -24.0
+offset_right = 96.0
+offset_bottom = 24.0
+color = Color(0.259, 0.196, 0.129, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LedgeHigh" unique_id=-1143493928]
+shape = SubResource("Rect_ledge_narrow")
+
+[node name="Chest" type="Sprite2D" parent="LedgeHigh" unique_id=237265743]
+texture_filter = 1
+position = Vector2(0, -85)
+scale = Vector2(2, 2)
+texture = SubResource("Atlas_chest")
+
+[node name="LedgeFar" type="StaticBody2D" parent="." unique_id=516162690]
+position = Vector2(2580, 837)
+
+[node name="Cap" type="TextureRect" parent="LedgeFar" unique_id=145341698]
+texture_filter = 1
+offset_left = 35.0
+offset_top = -96.0
+offset_right = 203.0
+offset_bottom = -62.0
+scale = Vector2(2, 2)
+texture = SubResource("Atlas_grasscap")
+stretch_mode = 1
+
+[node name="Fill" type="ColorRect" parent="LedgeFar" unique_id=256579014]
+offset_left = 35.0
+offset_top = -28.0
+offset_right = 371.0
+offset_bottom = 20.0
+color = Color(0.259, 0.196, 0.129, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LedgeFar" unique_id=-1663117302]
+position = Vector2(203, -4)
+shape = SubResource("Rect_ledge_wide")
+
+[node name="LedgeUp1" type="StaticBody2D" parent="." unique_id=26829770]
+position = Vector2(3050, 677)
+
+[node name="Cap" type="TextureRect" parent="LedgeUp1" unique_id=759248765]
+texture_filter = 1
+offset_left = -96.0
+offset_top = -92.0
+offset_bottom = -58.0
+scale = Vector2(2, 2)
+texture = SubResource("Atlas_grasscap")
+stretch_mode = 1
+
+[node name="Fill" type="ColorRect" parent="LedgeUp1" unique_id=458839090]
+offset_left = -96.0
+offset_top = -24.0
+offset_right = 96.0
+offset_bottom = 24.0
+color = Color(0.259, 0.196, 0.129, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LedgeUp1" unique_id=1701100456]
+shape = SubResource("Rect_ledge_narrow")
+
+[node name="LedgeUp2" type="StaticBody2D" parent="." unique_id=1613470561]
+position = Vector2(3320, 497)
+
+[node name="Cap" type="TextureRect" parent="LedgeUp2" unique_id=491339914]
+texture_filter = 1
+offset_left = -96.0
+offset_top = -92.0
+offset_bottom = -58.0
+scale = Vector2(2, 2)
+texture = SubResource("Atlas_grasscap")
+stretch_mode = 1
+
+[node name="Fill" type="ColorRect" parent="LedgeUp2" unique_id=129057823]
+offset_left = -96.0
+offset_top = -24.0
+offset_right = 96.0
+offset_bottom = 24.0
+color = Color(0.259, 0.196, 0.129, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LedgeUp2" unique_id=-1753453485]
+shape = SubResource("Rect_ledge_narrow")
+
+[node name="Perch" type="StaticBody2D" parent="." unique_id=1111648593]
+position = Vector2(3600, 317)
+
+[node name="Cap" type="TextureRect" parent="Perch" unique_id=-899763494]
+texture_filter = 1
+offset_left = -168.0
+offset_top = -92.0
+offset_bottom = -58.0
+scale = Vector2(2, 2)
+texture = SubResource("Atlas_grasscap")
+stretch_mode = 1
+
+[node name="Fill" type="ColorRect" parent="Perch" unique_id=-1733967120]
+offset_left = -168.0
+offset_top = -24.0
+offset_right = 168.0
+offset_bottom = 24.0
+color = Color(0.259, 0.196, 0.129, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Perch" unique_id=400654618]
+shape = SubResource("Rect_ledge_wide")
+
+[node name="Player" parent="." unique_id=-1900081924 instance=ExtResource("1_player")]
+position = Vector2(186, 886)
+
+[node name="Gunslinger" parent="." unique_id=435709735 instance=ExtResource("2_gunslinger")]
+position = Vector2(1600, 878)
+
+[node name="Gunslinger2" parent="." unique_id=920914375 instance=ExtResource("2_gunslinger")]
+position = Vector2(2702, 808)
+
+[node name="Gunslinger3" parent="." unique_id=-108936283 instance=ExtResource("2_gunslinger")]
+position = Vector2(3538, 906)
+
+[node name="Gunslinger4" parent="." unique_id=1445988705 instance=ExtResource("2_gunslinger")]
+position = Vector2(3620, 293)
+
+[node name="SaloonCheckpoint" parent="." unique_id=1137563098 instance=ExtResource("12_r5hy4")]
+z_index = -1
+position = Vector2(155, 1010)
+
+[node name="TileMapLayer" type="TileMapLayer" parent="." unique_id=1453453469]
+tile_set = SubResource("TileSet_1gj6p")

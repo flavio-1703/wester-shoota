@@ -33,7 +33,7 @@ enum State {
 const MAIN_MENU_SCENE := "res://scenes/ui/main_menu.tscn"
 ## The level the Play button starts. Becomes a level table once there's more
 ## than one.
-const FIRST_LEVEL_SCENE := "res://scenes/levels/test_level.tscn"
+const FIRST_LEVEL_SCENE := "res://scenes/levels/forest_level.tscn"
 const PAUSE_MENU_SCENE := "res://scenes/ui/pause_menu.tscn"
 const GAME_OVER_MENU_SCENE := "res://scenes/ui/game_over_menu.tscn"
 const HUD_SCENE := "res://scenes/ui/hud.tscn"
