@@ -27,7 +27,6 @@ scale = Vector2(3, 3)
 offset = Vector2(0, -16)
 sprite_frames = ExtResource("2_frames")
 animation = &"walk"
-autoplay = "walk"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 position = Vector2(0, -39)
