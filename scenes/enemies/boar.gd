@@ -262,7 +262,10 @@ func _set_facing(dir: int) -> void:
 
 
 func _apply_facing() -> void:
-	_visuals.scale.x = facing
+	# Unlike the player, this art pack's frames face left unflipped — so
+	# matching `facing` (positive = right) takes the negation, not the
+	# identity.
+	_visuals.scale.x = -facing
 	# Raycasts live outside Visuals and are aimed explicitly — scaling a
 	# RayCast2D by -1 is a good way to get confusing results.
 	_wall_check.target_position = Vector2(70.0 * facing, 0.0)
