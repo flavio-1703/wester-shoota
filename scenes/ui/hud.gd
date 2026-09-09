@@ -112,6 +112,10 @@ func _attach(player: Player) -> void:
 	_on_weapon_changed(player.weapon)
 	player.flask_changed.connect(_on_flask_changed)
 	_on_flask_changed(player.flask_charges, player.flask_charges_max)
+	# _on_ammo_changed() ignores its args and reads `_player` directly — see
+	# _update_weapon_label() — so the opening call needs none that matter.
+	player.ammo_changed.connect(_on_ammo_changed)
+	_on_ammo_changed(0, 0)
 
 
 func _on_health_changed(current: int, total: int) -> void:
@@ -133,9 +137,32 @@ func _on_flask_changed(current: int, total: int) -> void:
 
 ## Null is a real case, not a defensive check: a player whose `weapons` list is
 ## empty is unarmed and never emits anything else.
-func _on_weapon_changed(weapon: Weapon) -> void:
-	_weapon_label.text = weapon.display_name if weapon != null else "UNARMED"
+func _on_weapon_changed(_weapon: Weapon) -> void:
+	_update_weapon_label()
 	_refresh_slots()
+
+
+## Ammo and reload share the one label with the weapon name rather than
+## getting a readout of their own, because they're never meaningful apart
+## from it — "6/6" means nothing without knowing which gun it belongs to.
+func _on_ammo_changed(_current: int, _total: int) -> void:
+	_update_weapon_label()
+
+
+## Reads straight off `_player` rather than off the signal args, so a weapon
+## switch (which touches the name) and a shot (which touches the ammo) both
+## land through the one function and can't disagree about what's on screen.
+func _update_weapon_label() -> void:
+	var weapon := _player.weapon
+	if weapon == null:
+		_weapon_label.text = "UNARMED"
+		return
+
+	var text := weapon.display_name
+	if weapon.magazine_size > 0:
+		text += "  RELOADING" if _player.is_reloading() \
+			else "  %d/%d" % [_player.ammo, weapon.magazine_size]
+	_weapon_label.text = text
 
 
 ## Lights the slot holding the equipped weapon and dims the rest. Matched by

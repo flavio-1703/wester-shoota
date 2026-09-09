@@ -55,6 +55,25 @@ shape = SubResource("RectangleShape2D_ceiling")
 target_position = Vector2(0, 0)
 collision_mask = 1
 
+[node name="ReloadIndicator" type="Node2D" parent="."]
+position = Vector2(-25, -195)
+z_index = 2
+visible = false
+
+[node name="Background" type="ColorRect" parent="ReloadIndicator"]
+offset_right = 50.0
+offset_bottom = 7.0
+mouse_filter = 2
+color = Color(0.08, 0.05, 0.04, 0.9)
+
+[node name="Fill" type="ColorRect" parent="ReloadIndicator"]
+offset_left = 2.0
+offset_top = 2.0
+offset_right = 48.0
+offset_bottom = 5.0
+mouse_filter = 2
+color = Color(0.87, 0.87, 0.93, 1)
+
 [node name="SlideSfx" type="AudioStreamPlayer2D" parent="."]
 stream = ExtResource("10_slide")
 volume_db = -10.0

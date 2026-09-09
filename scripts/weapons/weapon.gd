@@ -13,9 +13,11 @@ extends Resource
 ##
 ## **A `.tres` is one shared object**, not a copy per holder. Nothing here may
 ## ever be written to at runtime — two players, or a player and a pickup, would
-## be looking at the same instance. Per-holder state (the fire cooldown, and
-## ammo if it's ever added) belongs on whoever is holding the weapon; the player
-## already keeps `_fire_cooldown` for exactly this reason.
+## be looking at the same instance. Per-holder state — the fire cooldown, the
+## rounds left in the magazine, the reload timer — belongs on whoever is
+## holding the weapon; the player keeps all three for exactly this reason.
+## `magazine_size` and `reload_time` below are the shared numbers that state
+## counts against, not the state itself.
 ##
 ## Damage, speed and range are deliberately *not* here. They belong to the
 ## projectile scene — see the pellet/bullet split in `scenes/projectiles/`,
@@ -43,6 +45,15 @@ extends Resource
 @export_range(1, 24) var pellets: int = 1
 ## Total cone width in degrees, from the topmost pellet to the bottom one.
 @export_range(0.0, 90.0) var spread_degrees: float = 0.0
+
+@export_group("Reload")
+## Shots per magazine before the player is forced to reload. 0 means
+## unlimited — the weapon never reloads, which is the old behaviour and stays
+## the default for anything that doesn't set this.
+@export var magazine_size: int = 0
+## Seconds the reload takes once the magazine empties. Unused when
+## `magazine_size` is 0.
+@export var reload_time: float = 1.0
 
 @export_group("Feedback")
 ## Backward velocity kick per shot. Has to clear ~167 px/s (one frame of the

@@ -36,6 +36,12 @@ signal weapon_changed(weapon: Weapon)
 ## readout can size itself from the signal alone.
 signal flask_changed(current: int, total: int)
 
+## Emitted on every change to `ammo` — each shot, each completed reload, and
+## every weapon switch. `total` is the current weapon's `magazine_size`, so a
+## readout can tell "0 rounds left, mid-reload" from "0 rounds left, unlimited
+## weapon" without reaching back into `weapon` itself.
+signal ammo_changed(current: int, total: int)
+
 ## Where the revolver's muzzle sits in each firing POSE, in Visuals-local pixels
 ## for a right-facing player. Measured off the muzzle flashes painted into the
 ## sprite sheet rather than derived from the collision height, because a firing
@@ -282,6 +288,10 @@ var flask_charges: int
 ## to its fields would edit that weapon for everyone holding it. Switch with
 ## _set_weapon().
 var weapon: Weapon
+## Rounds left in `weapon`'s magazine. Same contract as `health`: write only
+## through _set_ammo(). Meaningless — and left at 0 — for a weapon whose
+## `magazine_size` is 0; those never reload and the HUD never shows this.
+var ammo: int
 var state: State = State.NORMAL
 
 var _weapon_index: int = 0
@@ -297,6 +307,10 @@ var _fall_gravity: float
 var _coyote_timer: float = 0.0
 var _jump_buffer_timer: float = 0.0
 var _fire_cooldown: float = 0.0
+## Counts down from the current weapon's `reload_time`. Non-zero means a
+## reload is in progress, which is both the readout for the HUD and the gate
+## on firing — see is_reloading().
+var _reload_timer: float = 0.0
 var _shoot_pose_timer: float = 0.0
 var _land_timer: float = 0.0
 var _slide_timer: float = 0.0
@@ -342,6 +356,8 @@ var _footstep_index: int = 0
 @onready var _ceiling_check: ShapeCast2D = $CeilingCheck
 @onready var _camera := $Camera2D as PlayerCamera2D
 @onready var _slide_sfx: AudioStreamPlayer2D = $SlideSfx
+@onready var _reload_indicator: Node2D = $ReloadIndicator
+@onready var _reload_indicator_fill: ColorRect = $ReloadIndicator/Fill
 
 
 func _ready() -> void:
@@ -423,6 +439,9 @@ func _physics_process(delta: float) -> void:
 	_place_muzzle()
 	# After the move curve so the recoil kick survives into this frame's motion.
 	_handle_shoot()
+	# After _handle_shoot(), which is what arms and reads _reload_timer, so the
+	# bar reflects the state a reload gate actually saw this frame.
+	_update_reload_indicator()
 
 	# Captured before move_and_slide(), which zeroes it against the floor on the
 	# very frame the landing happens — so reading it afterwards would score every
@@ -459,6 +478,7 @@ func _tick_timers(delta: float) -> void:
 	_coyote_timer = maxf(_coyote_timer - delta, 0.0)
 	_jump_buffer_timer = maxf(_jump_buffer_timer - delta, 0.0)
 	_fire_cooldown = maxf(_fire_cooldown - delta, 0.0)
+	_tick_reload(delta)
 	_shoot_pose_timer = maxf(_shoot_pose_timer - delta, 0.0)
 	_land_timer = maxf(_land_timer - delta, 0.0)
 	_invuln_timer = maxf(_invuln_timer - delta, 0.0)
@@ -628,6 +648,55 @@ func _handle_move(delta: float) -> void:
 
 # --- Shooting ----------------------------------------------------------------
 
+## A reload is in progress. Read by the shooting gate and by the HUD, same
+## contract as is_drinking().
+func is_reloading() -> bool:
+	return _reload_timer > 0.0
+
+
+## The one place `ammo` is written — same contract _set_health() holds for
+## the pip row. `total` is read off `weapon` here rather than passed in, so
+## every caller gets the clamp and the signal right without having to know
+## the current magazine_size itself.
+func _set_ammo(value: int) -> void:
+	var total := weapon.magazine_size if weapon != null else 0
+	ammo = clampi(value, 0, maxi(total, 0))
+	ammo_changed.emit(ammo, total)
+
+
+## Ticks the reload timer and refills the magazine the instant it completes.
+## Split out from the one-line maxf() every other timer in _tick_timers()
+## gets, because completion has a side effect here — the plain form can't
+## tell "still reloading" from "just finished this frame" once both read 0.
+func _tick_reload(delta: float) -> void:
+	if _reload_timer <= 0.0:
+		return
+	_reload_timer = maxf(_reload_timer - delta, 0.0)
+	if _reload_timer <= 0.0 and weapon != null:
+		_set_ammo(weapon.magazine_size)
+
+
+## The bar above the player's head, same visual language as the enemy
+## HealthBar — a two-pixel-inset Fill over a Background, both ColorRects — so
+## a reload reads as the same kind of "meter filling up" the rest of the game
+## already uses instead of introducing a new kind of readout.
+##
+## Hidden outside a reload rather than left at 0 width: an empty bar sitting
+## over the player's head at all times would be a permanent distraction for a
+## state that's usually not happening.
+func _update_reload_indicator() -> void:
+	_reload_indicator.visible = is_reloading()
+	if not is_reloading() or weapon == null or weapon.reload_time <= 0.0:
+		return
+	# Fills up as the timer counts down, so the bar reads "how much longer,"
+	# not "how much has happened" — the number the player actually wants
+	# while they're waiting on it.
+	var progress := 1.0 - _reload_timer / weapon.reload_time
+	# The fill has a two-pixel inset within the 50px background, same as the
+	# enemy HealthBar it's copied from.
+	_reload_indicator_fill.size.x = 46.0 * clampf(progress, 0.0, 1.0)
+
+
 ## Whether fire is held or tapped is the weapon's call — `automatic` on the
 ## `.tres`. Held is the run-and-gun default; the shotgun is one shot per press.
 func _handle_shoot() -> void:
@@ -637,6 +706,11 @@ func _handle_shoot() -> void:
 	# rather than a free button, and it's checked here rather than by clearing
 	# `_fire_cooldown` so a held trigger resumes the instant the swig ends.
 	if is_drinking():
+		return
+	# The reload gate. No input latches here on purpose — same as a cooldown,
+	# holding the trigger through a reload just resumes firing the instant
+	# _tick_reload() refills the magazine.
+	if is_reloading():
 		return
 
 	var pulled := Input.is_action_pressed("shoot") if weapon.automatic \
@@ -662,6 +736,19 @@ func _handle_shoot() -> void:
 	# shotgun would fire six overlapping copies of its own blast.
 	Sfx.play_at(weapon.fire_sound, _muzzle.global_position, weapon.fire_volume_db,
 		randf_range(0.96, 1.04))
+
+	# One round per trigger pull, like the sound above — a shotgun's six
+	# pellets cost one shell, not six. Weapons with magazine_size 0 skip this
+	# entirely and never reload.
+	#
+	# The timer is armed BEFORE _set_ammo(), not after: ammo_changed fires
+	# synchronously from inside _set_ammo(), so the HUD's is_reloading() check
+	# would see the pre-reload timer and print "0/6" instead of "RELOADING"
+	# on the exact shot that empties the magazine.
+	if weapon.magazine_size > 0:
+		if ammo <= 1:
+			_reload_timer = weapon.reload_time
+		_set_ammo(ammo - 1)
 
 	# Recoil would only fight the slide's own decay curve, so skip it there.
 	if state != State.SLIDE:
@@ -698,11 +785,20 @@ func _handle_weapon_switch() -> void:
 ## It deliberately leaves `_fire_cooldown` alone. Clearing it on a switch would
 ## make cycling weapons a way to fire as fast as you can press the switch key,
 ## which beats every fire_interval in the game.
+##
+## `_reload_timer` is left alone for the same reason `_fire_cooldown` is:
+## clearing it on switch would make cycling weapons a way to skip a reload,
+## same exploit as skipping the fire-rate gate. `ammo` still resets to a full
+## magazine on switch — a weapon not currently in hand has no way to spend
+## rounds from it — but the switch lands you back in whatever wait was
+## already running, and _tick_reload() refills against the new weapon's
+## `magazine_size` when it completes.
 func _set_weapon(index: int) -> void:
 	if weapons.is_empty():
 		return
 	_weapon_index = clampi(index, 0, weapons.size() - 1)
 	weapon = weapons[_weapon_index]
+	_set_ammo(weapon.magazine_size)
 	weapon_changed.emit(weapon)
 
 
@@ -796,6 +892,9 @@ func rest_refill() -> void:
 		return
 	_drink_timer = 0.0
 	_drink_heal_pending = false
+	_reload_timer = 0.0
+	if weapon != null:
+		_set_ammo(weapon.magazine_size)
 	_set_health(max_health)
 	_set_flask_charges(flask_charges_max)
 
@@ -1199,6 +1298,14 @@ func die() -> void:
 	# the death screen, which reads as a bug.
 	_drink_timer = 0.0
 	_drink_heal_pending = false
+	# Same reasoning, and the likelier case: the reload window is exactly when
+	# you can't shoot back, so dying mid-reload is common, not an edge case.
+	# The timer alone isn't enough — take_damage() is called from bullet code,
+	# not from inside _physics_process, so there's no guarantee one more
+	# _update_reload_indicator() tick runs before the tree freezes behind the
+	# game-over screen. Hide it directly instead of waiting for that tick.
+	_reload_timer = 0.0
+	_reload_indicator.visible = false
 	# Zeroed for the benefit of the HUD: falling out of the level kills you
 	# without ever touching health, and a full bar behind the death screen reads
 	# as a bug. Redundant on the damage route, where it's already 0.
