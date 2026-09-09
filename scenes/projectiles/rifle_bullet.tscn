@@ -1,0 +1,28 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scenes/projectiles/bullet.gd" id="1_bullet"]
+[ext_resource type="PackedScene" path="res://scenes/fx/impact_puff.tscn" id="2_puff"]
+[ext_resource type="AudioStream" path="res://assets/audio/impact_flesh.tres" id="3_impact"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_rifle_bullet"]
+size = Vector2(44, 6)
+
+[node name="RifleBullet" type="Area2D"]
+collision_layer = 8
+collision_mask = 5
+script = ExtResource("1_bullet")
+speed = 2600.0
+lifetime = 1.5
+damage = 3
+puff_scene = ExtResource("2_puff")
+impact_sound = ExtResource("3_impact")
+
+[node name="Placeholder" type="ColorRect" parent="."]
+offset_left = -22.0
+offset_top = -3.0
+offset_right = 22.0
+offset_bottom = 3.0
+color = Color(0.65, 0.85, 0.6, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_rifle_bullet")

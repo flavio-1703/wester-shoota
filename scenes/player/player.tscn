@@ -1,8 +1,9 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scenes/player/player.gd" id="1_player"]
 [ext_resource type="Resource" path="res://scripts/weapons/revolver.tres" id="2_revolver"]
 [ext_resource type="Resource" path="res://scripts/weapons/shotgun.tres" id="4_shotgun"]
+[ext_resource type="Resource" path="res://scripts/weapons/rifle.tres" id="11_rifle"]
 [ext_resource type="Script" path="res://scenes/player/player_camera_2d.gd" id="3_camera"]
 [ext_resource type="SpriteFrames" path="res://scenes/player/player_frames.tres" id="5_frames"]
 [ext_resource type="PackedScene" path="res://scenes/fx/dust_puff.tscn" id="6_dust"]
@@ -24,7 +25,7 @@ size = Vector2(52, 162)
 collision_layer = 2
 collision_mask = 1
 script = ExtResource("1_player")
-weapons = Array[Weapon]([ExtResource("2_revolver"), ExtResource("4_shotgun")])
+weapons = Array[Weapon]([ExtResource("2_revolver"), ExtResource("4_shotgun"), ExtResource("11_rifle")])
 dust_scene = ExtResource("6_dust")
 muzzle_flash_scene = ExtResource("7_flash")
 footstep_sounds = Array[AudioStream]([ExtResource("8_step_a"), ExtResource("9_step_b")])

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="Weapon" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/weapons/weapon.gd" id="1_weapon"]
+[ext_resource type="PackedScene" path="res://scenes/projectiles/rifle_bullet.tscn" id="2_rifle_bullet"]
+[ext_resource type="AudioStream" path="res://assets/audio/revolver_shot.tres" id="3_shot"]
+
+[resource]
+script = ExtResource("1_weapon")
+display_name = "Rifle"
+ui_color = Color(0.45, 0.55, 0.35, 1)
+projectile_scene = ExtResource("2_rifle_bullet")
+fire_interval = 0.9
+automatic = false
+pellets = 1
+spread_degrees = 0.0
+magazine_size = 4
+reload_time = 1.4
+recoil_impulse = 500.0
+trauma = 0.5
+muzzle_flash_time = 0.06
+fire_sound = ExtResource("3_shot")
+fire_volume_db = -3.0
