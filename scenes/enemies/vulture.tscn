@@ -1,0 +1,65 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scenes/enemies/vulture.gd" id="1_vulture"]
+[ext_resource type="PackedScene" path="res://scenes/fx/impact_puff.tscn" id="2_puff"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_vulture_body"]
+size = Vector2(60, 36)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_vulture_hitbox"]
+size = Vector2(70, 44)
+
+[node name="Vulture" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 1
+script = ExtResource("1_vulture")
+death_puff_scene = ExtResource("2_puff")
+
+[node name="Visuals" type="Node2D" parent="."]
+
+[node name="Placeholder" type="ColorRect" parent="Visuals"]
+offset_left = -32.0
+offset_top = -20.0
+offset_right = 32.0
+offset_bottom = 20.0
+color = Color(0.32, 0.29, 0.27, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_vulture_body")
+
+; Layer 0 / mask 2: only ever looks for the player, same convention as the
+; boar's — it carries no layer of its own so nothing, bullets included, can
+; collide with it. Damage is polled from the vulture's script, not signalled
+; from here.
+[node name="Hitbox" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hitbox"]
+shape = SubResource("RectangleShape2D_vulture_hitbox")
+
+[node name="WallCheck" type="RayCast2D" parent="."]
+target_position = Vector2(-60, 0)
+collision_mask = 1
+
+[node name="SightRay" type="RayCast2D" parent="."]
+target_position = Vector2(-700, 0)
+collision_mask = 1
+
+[node name="HealthBar" type="Node2D" parent="."]
+position = Vector2(-25, -50)
+z_index = 2
+
+[node name="Background" type="ColorRect" parent="HealthBar"]
+offset_right = 50.0
+offset_bottom = 7.0
+mouse_filter = 2
+color = Color(0.08, 0.05, 0.04, 0.9)
+
+[node name="Fill" type="ColorRect" parent="HealthBar"]
+offset_left = 2.0
+offset_top = 2.0
+offset_right = 48.0
+offset_bottom = 5.0
+mouse_filter = 2
+color = Color(0.82, 0.18, 0.12, 1)

@@ -2,6 +2,7 @@
 
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/enemies/gunslinger.tscn" id="2_gunslinger"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/vulture.tscn" id="6_vulture"]
 [ext_resource type="PackedScene" uid="uid://myvv3iispsx0" path="res://scenes/levels/backgrounds/desert_bg.tscn" id="3_desert_bg"]
 [ext_resource type="PackedScene" path="res://scenes/checkpoints/saloon_checkpoint.tscn" id="4_saloon"]
 [ext_resource type="PackedScene" path="res://scenes/pickups/tequila_stash.tscn" id="5_stash"]
@@ -149,6 +150,12 @@ position = Vector2(3538, 953)
 
 [node name="Gunslinger4" parent="." unique_id=118689254 instance=ExtResource("2_gunslinger")]
 position = Vector2(3620, 340)
+
+[node name="Vulture" parent="." unique_id=751046221 instance=ExtResource("6_vulture")]
+position = Vector2(950, 550)
+
+[node name="Vulture2" parent="." unique_id=751046222 instance=ExtResource("6_vulture")]
+position = Vector2(2950, 500)
 
 [node name="Saloon" parent="." unique_id=1090553301 instance=ExtResource("4_saloon")]
 position = Vector2(2202, 1055)

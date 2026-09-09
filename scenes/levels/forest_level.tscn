@@ -13,6 +13,7 @@
 [ext_resource type="Texture2D" uid="uid://drcekoe5b3jaf" path="res://Trees/Dark-Tree.png" id="11_dark"]
 [ext_resource type="PackedScene" uid="uid://bwweu7phneclu" path="res://scenes/checkpoints/saloon_checkpoint.tscn" id="12_r5hy4"]
 [ext_resource type="PackedScene" path="res://scenes/enemies/boar.tscn" id="13_boar"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/vulture.tscn" id="14_vulture"]
 
 [sub_resource type="AtlasTexture" id="Atlas_grasscap"]
 atlas = ExtResource("4_tiles")
@@ -451,6 +452,12 @@ position = Vector2(1250, 1010)
 
 [node name="Boar2" parent="." unique_id=1802446312 instance=ExtResource("13_boar")]
 position = Vector2(2900, 1010)
+
+[node name="Vulture" parent="." unique_id=751046223 instance=ExtResource("14_vulture")]
+position = Vector2(1900, 420)
+
+[node name="Vulture2" parent="." unique_id=751046224 instance=ExtResource("14_vulture")]
+position = Vector2(3150, 430)
 
 [node name="SaloonCheckpoint" parent="." unique_id=1137563098 instance=ExtResource("12_r5hy4")]
 z_index = -1
